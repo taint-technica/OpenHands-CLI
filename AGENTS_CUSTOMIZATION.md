@@ -296,6 +296,115 @@ sudo apt-get update && sudo apt-get install --reinstall patchelf
 
 ---
 
+## 📊 Langfuse Integration
+
+### Overview
+
+OpenHands CLI integrates with **Langfuse** for LLM tracing, cost tracking, and analytics.
+
+**Features:**
+- ✅ Automatic tracing of all LLM calls
+- ✅ Token usage tracking (input/output)
+- ✅ Cost calculation (auto from model pricing)
+- ✅ Latency monitoring
+- ✅ Error tracking
+- ✅ Session/conversation context
+
+### Architecture
+
+```
+OpenHands CLI → LiteLLM → Langfuse Callback → Local Langfuse Server
+                     ↓
+               LLM Provider (OpenAI, Anthropic, etc.)
+```
+
+### Configuration
+
+**Settings Location:** Settings Screen → "📊 Langfuse Tracing" button
+
+**Required Fields:**
+- **Enable Langfuse Tracing**: Checkbox to enable/disable
+- **Langfuse Host**: URL of your Langfuse server (e.g., `http://localhost:3000`)
+- **Public Key**: Langfuse public API key
+- **Secret Key**: Langfuse secret API key (masked)
+- **Project Name**: Project identifier in Langfuse
+
+**Storage:** `~/.openhands/langfuse_config.json`
+
+### Setup Steps
+
+1. **Start Langfuse Server:**
+   ```bash
+   docker-compose up -d langfuse-web langfuse-worker
+   ```
+
+2. **Access Langfuse UI:**
+   ```
+   http://localhost:3000
+   Default credentials: Check docker-compose.env or set via env vars
+   ```
+
+3. **Get API Keys:**
+   - Go to Settings → API Keys
+   - Create new project or use default
+   - Copy Public Key & Secret Key
+
+4. **Configure in OpenHands CLI:**
+   - Run: `uv run openhands`
+   - Open Settings (gear icon)
+   - Click "📊 Langfuse Tracing"
+   - Enter credentials
+   - Click "Test Connection"
+   - Click "Save"
+
+5. **Verify Tracing:**
+   - Chat with agent: "Write a hello world function"
+   - Check Langfuse UI: Trace should appear within seconds
+
+### Implementation Details
+
+**Files Modified:**
+- `openhands_cli/stores/langfuse_store.py` - Config storage
+- `openhands_cli/stores/agent_store.py` - Enable LiteLLM callback
+- `openhands_cli/tui/modals/settings/langfuse_config.py` - Settings UI
+- `openhands_cli/tui/modals/settings/settings_screen.py` - Integration
+
+**How It Works:**
+```python
+# When Langfuse is enabled:
+import litellm
+
+# Set environment variables
+os.environ["LANGFUSE_HOST"] = "http://localhost:3000"
+os.environ["LANGFUSE_PUBLIC_KEY"] = "pk-lf-..."
+os.environ["LANGFUSE_SECRET_KEY"] = "sk-lf-..."
+
+# Enable callbacks
+litellm.success_callback = ["langfuse"]
+litellm.failure_callback = ["langfuse"]
+
+# All subsequent LLM calls are automatically traced
+```
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Connection failed | Check Langfuse server is running: `docker-compose ps` |
+| No traces appearing | Verify API keys are correct in Langfuse UI |
+| High latency | Check network to Langfuse server; consider async mode |
+| Missing cost data | Ensure model name matches Langfuse pricing database |
+
+### Privacy & Security
+
+- ✅ Data stays local (self-hosted Langfuse)
+- ✅ API keys stored encrypted in config file
+- ✅ No data sent to external services
+- ⚠️ LLM content still sent to Langfuse (tracing includes prompts/responses)
+
+---
+
+
 ## 🎯 Future Enhancements
 
 ### Planned Features

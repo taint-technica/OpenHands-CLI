@@ -131,7 +131,9 @@ def build_with_nuitka() -> bool:
 
     # Build command
     cmd = [
-        sys.executable, "-m", "nuitka",
+        sys.executable,
+        "-m",
+        "nuitka",
         "--onefile",
         "--enable-plugin=pylint-warnings",
         "--output-dir=dist",
@@ -286,10 +288,10 @@ def main() -> int:
     print_info("To test the binary:")
     if os.name == "nt":  # Windows
         print(f"  {binary_path} --help")
-        print(f"  {binary_path} -t \"Write a hello world function\"")
+        print(f'  {binary_path} -t "Write a hello world function"')
     else:
         print(f"  ./{binary_path} --help")
-        print(f"  ./{binary_path} -t \"Write a hello world function\"")
+        print(f'  ./{binary_path} -t "Write a hello world function"')
     print()
 
     print_success("🎉 Build process completed!")
@@ -307,5 +309,6 @@ if __name__ == "__main__":
     except Exception as e:
         print_error(f"Build failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

@@ -1152,6 +1152,24 @@ wheels = [
 ]
 
 [[package]]
+name = "langfuse"
+version = "2.50.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "backoff" },
+    { name = "httpx" },
+    { name = "idna" },
+    { name = "packaging" },
+    { name = "pydantic" },
+    { name = "wrapt" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cd/04/84cedb12a41a5ab4bad5a812be827faca5ed7f05b1280e4e797a263e52c3/langfuse-2.50.0.tar.gz", hash = "sha256:4a03c3f54b2a7fa906151d1da9f1ef668ad65f05aac9155355a1c1f085272338", size = 116326, upload-time = "2024-09-18T15:02:38.795Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/05/8c/b043ffbacc656596a340acebc597ec0fe0dae13cf6855b87cc819d518812/langfuse-2.50.0-py3-none-any.whl", hash = "sha256:2ff502588597e726d242ccc75fb63604c1d4148c23ae19cf49b99cb06292c29e", size = 212945, upload-time = "2024-09-18T15:02:36.631Z" },
+]
+
+[[package]]
 name = "lazy-object-proxy"
 version = "1.12.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1580,6 +1598,7 @@ source = { editable = "." }
 dependencies = [
     { name = "agent-client-protocol" },
     { name = "httpx" },
+    { name = "langfuse" },
     { name = "openhands-sdk" },
     { name = "openhands-tools" },
     { name = "openhands-workspace" },
@@ -1620,6 +1639,7 @@ dev = [
 requires-dist = [
     { name = "agent-client-protocol", specifier = ">=0.7.0,<0.8.0" },
     { name = "httpx", specifier = ">=0.25.0" },
+    { name = "langfuse", specifier = "==2.50.0" },
     { name = "openhands-sdk", specifier = "==1.11.5" },
     { name = "openhands-tools", specifier = "==1.11.5" },
     { name = "openhands-workspace", specifier = "==1.11.1" },
@@ -1896,11 +1916,11 @@ wheels = [
 
 [[package]]
 name = "packaging"
-version = "25.0"
+version = "24.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a1/d4/1fc4078c65507b51b96ca8f8c3ba19e6a61c8253c72794544580a7b6c24d/packaging-25.0.tar.gz", hash = "sha256:d443872c98d677bf60f6a1f2f8c1cb748e8fe762d2bf9d3148b5599295b0fc4f", size = 165727, upload-time = "2025-04-19T11:48:59.673Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/63/68dbb6eb2de9cb10ee4c9c14a0148804425e13c4fb20d61cce69f53106da/packaging-24.2.tar.gz", hash = "sha256:c228a6dc5e932d346bc5739379109d49e8853dd8223571c7c5b55260edc0b97f", size = 163950, upload-time = "2024-11-08T09:47:47.202Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/12/38679034af332785aac8774540895e234f4d07f7545804097de4b666afd8/packaging-25.0-py3-none-any.whl", hash = "sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484", size = 66469, upload-time = "2025-04-19T11:48:57.875Z" },
+    { url = "https://files.pythonhosted.org/packages/88/ef/eb23f262cca3c0c4eb7ab1933c3b1f03d021f2c48f54763065b6f0e321be/packaging-24.2-py3-none-any.whl", hash = "sha256:09abb1bccd265c01f4a3aa3f7a7db064b36514d2cba19a2f694fe6150451a759", size = 65451, upload-time = "2024-11-08T09:47:44.722Z" },
 ]
 
 [[package]]

@@ -13,6 +13,7 @@ from openhands_cli.acp_impl.slash_commands import (
     get_confirm_help_text,
     get_confirm_success_text,
     get_unknown_command_text,
+    handle_analysis_architect_and_framework,
     handle_confirm_argument,
     parse_slash_command,
     validate_confirmation_mode,
@@ -78,17 +79,22 @@ class TestSlashCommandFunctions:
     def test_get_available_commands(self):
         """Test getting available slash commands."""
         commands = get_available_slash_commands()
-        assert len(commands) == 2
+        assert len(commands) == 3
 
-        # Check that both commands are present (without "/" prefix per ACP spec)
+        # Check that all commands are present (without "/" prefix per ACP spec)
         command_names = {cmd.name for cmd in commands}
-        assert command_names == {"help", "confirm"}
+        assert command_names == {"help", "confirm", "analysis_architect_and_framework"}
 
         # Check that descriptions exist
         help_cmd = next(cmd for cmd in commands if cmd.name == "help")
         assert help_cmd.description
         confirm_cmd = next(cmd for cmd in commands if cmd.name == "confirm")
         assert confirm_cmd.description
+        analysis_cmd = next(
+            cmd for cmd in commands if cmd.name == "analysis_architect_and_framework"
+        )
+        assert analysis_cmd.description
+        assert "architecture" in analysis_cmd.description.lower()
 
     def test_create_help_text(self):
         """Test creating help text."""
@@ -97,6 +103,7 @@ class TestSlashCommandFunctions:
         assert "Available slash commands" in help_text
         assert "/help" in help_text
         assert "/confirm" in help_text
+        assert "/analysis_architect_and_framework" in help_text
 
 
 class TestConfirmationModeValidation:
@@ -290,3 +297,76 @@ class TestApplyConfirmationModeToConversation:
         mock_conversation.set_confirmation_policy.assert_called_once()
         policy = mock_conversation.set_confirmation_policy.call_args[0][0]
         assert isinstance(policy, ConfirmRisky)
+
+
+class TestAnalysisArchitectAndFrameworkCommand:
+    """Test /analysis_architect_and_framework command handling."""
+
+    def test_analysis_no_argument_shows_help(self):
+        """Test /analysis_architect_and_framework with no argument shows help."""
+        response = handle_analysis_architect_and_framework("")
+        assert response
+        assert "Analysis Architect & Framework" in response
+        assert "Usage: /analysis_architect_and_framework <target>" in response
+        assert "Examples:" in response
+        assert "Supported analysis levels:" in response
+        assert "Single File" in response
+        assert "Multi Files" in response
+        assert "Module" in response
+        assert "Service" in response
+
+    def test_analysis_whitespace_only_shows_help(self):
+        """Test /analysis_architect_and_framework with whitespace shows help."""
+        response = handle_analysis_architect_and_framework("   ")
+        assert response
+        assert "Analysis Architect & Framework" in response
+        assert "Please specify a file, folder, module, or service" in response
+
+    def test_analysis_with_file_path(self):
+        """Test /analysis_architect_and_framework with file path."""
+        response = handle_analysis_architect_and_framework("src/main.py")
+        assert response
+        assert "Starting Architecture Analysis for: src/main.py" in response
+        assert "Structure Analysis" in response
+        assert "Dependency Mapping" in response
+        assert "Pattern Detection" in response
+        assert "Framework Analysis" in response
+        assert "Documentation" in response
+        assert "Analyzing target: src/main.py" in response
+
+    def test_analysis_with_folder_path(self):
+        """Test /analysis_architect_and_framework with folder path."""
+        response = handle_analysis_architect_and_framework("./services/user_service")
+        assert response
+        assert "Starting Architecture Analysis for: ./services/user_service" in response
+        assert "I will analyze the code structure" in response
+
+    def test_analysis_with_module_name(self):
+        """Test /analysis_architect_and_framework with module name."""
+        response = handle_analysis_architect_and_framework("auth_module")
+        assert response
+        assert "Starting Architecture Analysis for: auth_module" in response
+
+    def test_analysis_with_extra_spaces(self):
+        """Test /analysis_architect_and_framework handles extra spaces."""
+        response = handle_analysis_architect_and_framework("  src/main.py  ")
+        assert response
+        assert "Starting Architecture Analysis for: src/main.py" in response
+
+    def test_analysis_comprehensive_help(self):
+        """Test that help text includes all analysis levels."""
+        response = handle_analysis_architect_and_framework("")
+        # Check all analysis levels are mentioned
+        assert "Single File" in response
+        assert "Multi Files" in response
+        assert "Module" in response
+        assert "Service" in response
+        assert "Router" in response
+        assert "Domain" in response
+
+    def test_analysis_examples_in_help(self):
+        """Test that help text includes examples."""
+        response = handle_analysis_architect_and_framework("")
+        assert "src/main.py" in response
+        assert "./services/user_service" in response
+        assert "auth_module" in response

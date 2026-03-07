@@ -54,6 +54,7 @@ from openhands_cli.acp_impl.slash_commands import (
     get_available_slash_commands,
     get_confirmation_mode_from_conversation,
     get_unknown_command_text,
+    handle_analysis_architect_and_framework,
     handle_confirm_argument,
     parse_slash_command,
     validate_confirmation_mode,
@@ -514,6 +515,8 @@ class BaseOpenHandsACPAgent(ACPAgent, ABC):
                     response_text = create_help_text()
                 elif command == "confirm":
                     response_text = await self._cmd_confirm(session_id, argument)
+                elif command == "analysis_architect_and_framework":
+                    response_text = handle_analysis_architect_and_framework(argument)
                 else:
                     response_text = get_unknown_command_text(command)
 

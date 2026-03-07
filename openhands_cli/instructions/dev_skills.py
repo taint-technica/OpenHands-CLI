@@ -91,12 +91,12 @@ GENERATE_UNIT_TEST = Skill(
 
 #### 2.2. Boundary & Edge Cases
 
-+ For numbering input: 
++ For numbering input:
 ```
 - Blank value
 - The minimum, min+-1
 - The maximum, max+-1
-- Just Outside range 
+- Just Outside range
 - Zero or Negative number, decimal number
 - Not a number (alphabets characters, special characters,...)
 - Trim spaces at the beginning and end of the string
@@ -152,7 +152,7 @@ GENERATE_UNIT_TEST = Skill(
 - Simulate slow response when calling a external system
 ```
 
-## 3. Parameterized Test:  
+## 3. Parameterized Test:
 
 `When ever it possible using parameterized test for a function/ method`
 
@@ -182,15 +182,15 @@ class OrderService:
 
 - Mock from interface if it exists
 
-- DB read write: 
-``` 
+- DB read write:
+```
 Use an In-Memory Database or a Repository Pattern to :
 Test the logic that happens AFTER the data is fetched or BEFORE it's saved
 ```
 
 - External API Calls
 ```
-Never hit a real URL. Instead use libraries: 
+Never hit a real URL. Instead use libraries:
 Responses (Python), or WireMock (Java).
 ```
     """,
@@ -199,6 +199,49 @@ Responses (Python), or WireMock (Java).
         keywords=["unit test", "gen unit test", "unit test generation", "test"],
     ),
     description="How to generate Unit Test",
+)
+
+ANALYSIS_ARCHITECT_AND_FRAMEWORK = Skill(
+    name="analysis_architect_and_framework",
+    content="""
+You are a Senior Architect with 15+ years of experience 
+
+Your task is to analyze the entire project source code, to provide the output to architect.md :
+
+## 1. Architecture Overview
+
+```
+Explain the architecture of this project. 
+Describe the folder structure, main components, how they interact with each other.
+Overall data flow from input to output.
+```
+
+## 2. Framework Overview
+
+```
+What frameworks are used in this project.
+What design patterns are used.
+```
+
+## 3. Modules Overview
+
+```
+Explain what modules are consisted in the project, basic functions for each module.
+```
+""",
+    trigger=KeywordTrigger(
+        type="keyword",
+        keywords=[
+            "analysis architect",
+            "architecture analysis",
+            "framework analysis",
+            "analyze architecture",
+            "code structure",
+            "system design",
+            "design pattern",
+        ],
+    ),
+    description="Analysis Architect & Framework - Comprehensive guide for analyzing software architecture and framework structures",
 )
 
 # ============================================================================
@@ -228,4 +271,5 @@ def get_dev_skills() -> list[Skill]:
         ANTI_LEAK_INSTRUCTIONS,
         # Always-active skills (go into REPO_CONTEXT)
         GENERATE_UNIT_TEST,
+        ANALYSIS_ARCHITECT_AND_FRAMEWORK,
     ]

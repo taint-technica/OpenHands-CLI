@@ -25,6 +25,9 @@ COMMANDS = [
     DropdownItem(main="/skills - View loaded skills, hooks, and MCPs"),
     DropdownItem(main="/feedback - Send anonymous feedback about CLI"),
     DropdownItem(main="/exit - Exit the application"),
+    DropdownItem(
+        main="/analysis_architect_and_framework - Analyze code architecture and framework structure"
+    ),
 ]
 
 
@@ -80,6 +83,7 @@ def show_help(scroll_view: VerticalScroll) -> None:
   [{secondary}]/skills[/{secondary}] - View loaded skills, hooks, and MCPs
   [{secondary}]/feedback[/{secondary}] - Send anonymous feedback about CLI
   [{secondary}]/exit[/{secondary}] - Exit the application
+  [{secondary}]/analysis_architect_and_framework[/{secondary}] - Analyze code architecture and framework structure
 
 [dim]Tips:[/dim]
   • Type / and press Tab to see command suggestions

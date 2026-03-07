@@ -22,6 +22,7 @@ from openhands.sdk.conversation.persistence_const import BASE_STATE
 from openhands.sdk.critic.base import CriticBase
 from openhands.sdk.critic.impl.api import APIBasedCritic
 from openhands.sdk.tool import Tool
+from openhands_cli.instructions import get_dev_skills
 from openhands_cli.locations import (
     AGENT_SETTINGS_PATH,
     get_conversations_dir,
@@ -379,7 +380,16 @@ class AgentStore:
         )
 
     def _build_agent_context(self) -> AgentContext:
-        skills = load_project_skills(get_work_dir())
+        # Load developer-defined skills (hardcoded, compiled with Nuitka)
+        dev_skills = get_dev_skills()
+
+        # Load project skills (from .agents/skills/, .openhands/skills/)
+        project_skills = load_project_skills(get_work_dir())
+
+        # Combine skills: dev skills + project skills
+        # User skills will be loaded separately via load_user_skills=True
+        all_skills = dev_skills + project_skills
+
         system_suffix = "\n".join(
             [
                 f"Your current working directory is: {get_work_dir()}",
@@ -387,7 +397,7 @@ class AgentStore:
             ]
         )
         return AgentContext(
-            skills=skills,
+            skills=all_skills,
             system_message_suffix=system_suffix,
             load_user_skills=True,
             load_public_skills=True,

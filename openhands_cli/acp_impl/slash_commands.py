@@ -60,6 +60,35 @@ def get_available_slash_commands() -> list[AvailableCommand]:
                 ),
             ),
         ),
+        AvailableCommand(
+            name="configure_sonar_scanner",
+            description="Create a Sonar Scanner configuration file",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
+            ),
+        ),
+        AvailableCommand(
+            name="run_unit_test",
+            description="Run Unit Test for Sonar report",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
+            ),
+        ),
+        AvailableCommand(
+            name="post_sonarqube_server",
+            description="Posting Unit Test result and source coverage to SonarQube server",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
+            ),
+        ),
+        AvailableCommand(
+            name="generate_single_unit_test",
+            description="Generate Unit Test for a single file",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
+            ),
+        ),
+
     ]
 
 
@@ -294,4 +323,28 @@ def get_unknown_command_text(command: str) -> str:
         f"Unknown command: /{command}\n\n"
         f"Available commands: {command_list}\n"
         f"Use /help for more information."
+    )
+
+def get_help_configure_sonar_scanner() -> str:
+    return (
+        "Create a Sonar Scanner configuration file\n\n"
+        "This tool helps generating sonar-project.properties file for the current project.\n\n"
+    )
+
+def get_help_run_unit_test() -> str:
+    return (
+        "Run Unit Test for Sonar report\n\n"
+        "This tool helps running unit test for entire project with coverage reports.\n\n"
+    )
+
+def get_help_post_sonarqube_server() -> str:
+    return (
+        "Posting Unit Test result and source coverage to SonarQube server\n\n"
+        "This tool helps posting unit test result and source coverage to a remote SonarQube server.\n\n"
+    )
+
+def get_help_generate_single_unit_test() -> str:
+    return (
+        "Generate Unit Test for a single file \n\n"
+        "This tool helps generating Unit Test code for a single file.\n\n"
     )

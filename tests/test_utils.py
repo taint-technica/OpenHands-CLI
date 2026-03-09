@@ -2,9 +2,7 @@
 
 import json
 import os
-import platform
 from argparse import Namespace
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest

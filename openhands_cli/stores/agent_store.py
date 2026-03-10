@@ -1,4 +1,3 @@
-# openhands_cli/stores/agent_store.py
 from __future__ import annotations
 
 import json
@@ -125,6 +124,7 @@ DEFAULT_LLM_BASE_URL = "https://llm-proxy.app.all-hands.dev/"
 ENV_LLM_API_KEY = "LLM_API_KEY"
 ENV_LLM_BASE_URL = "LLM_BASE_URL"
 ENV_LLM_MODEL = "LLM_MODEL"
+ENV_LLM_MAX_OUTPUT_TOKENS = "LLM_MAX_OUTPUT_TOKENS"
 
 
 class MissingEnvironmentVariablesError(Exception):
@@ -184,6 +184,7 @@ class LLMEnvOverrides(BaseModel):
     api_key: SecretStr | None = None
     base_url: str | None = None
     model: str | None = None
+    max_output_tokens: int | None = None
 
     @classmethod
     def from_env(cls, enabled: bool = False) -> LLMEnvOverrides:
@@ -214,6 +215,13 @@ class LLMEnvOverrides(BaseModel):
         if model:
             result["model"] = model
 
+        max_output_tokens_str = os.environ.get(ENV_LLM_MAX_OUTPUT_TOKENS) or None
+        if max_output_tokens_str:
+            try:
+                result["max_output_tokens"] = int(max_output_tokens_str)
+            except ValueError:
+                pass
+
         return cls(**result)
 
     def require_for_headless(self) -> None:
@@ -227,7 +235,7 @@ class LLMEnvOverrides(BaseModel):
 
     def has_overrides(self) -> bool:
         """Check if any overrides are set."""
-        return any([self.api_key, self.base_url, self.model])
+        return any([self.api_key, self.base_url, self.model, self.max_output_tokens])
 
 
 def apply_llm_overrides(llm: LLM, overrides: LLMEnvOverrides) -> LLM:

@@ -8,12 +8,8 @@ from openhands.sdk import Agent, AgentContext, BaseConversation, Conversation, W
 from openhands.sdk.context import Skill
 from openhands.sdk.event.base import Event
 from openhands.sdk.hooks import HookConfig
-from openhands.sdk.security.confirmation_policy import (
-    ConfirmationPolicyBase,
-)
+from openhands.sdk.security.confirmation_policy import ConfirmationPolicyBase
 from openhands.sdk.security.llm_analyzer import LLMSecurityAnalyzer
-
-# Register tools on import
 from openhands_cli.locations import get_conversations_dir, get_work_dir
 from openhands_cli.stores import AgentStore
 from openhands_cli.tui.widgets.richlog_visualizer import ConversationVisualizer
@@ -61,7 +57,6 @@ def load_agent_specs(
             "Agent specification not found. Please configure your settings."
         )
 
-    # If MCP servers are provided, augment the agent's MCP configuration
     if mcp_servers:
         # Merge with existing MCP configuration (provided servers take precedence)
         mcp_config: dict[str, Any] = agent.mcp_config or {}
@@ -124,7 +119,6 @@ def setup_conversation(
         critic_disabled=critic_disabled,
     )
 
-    # Prepare callbacks list
     callbacks = [event_callback] if event_callback else None
 
     # Load hooks from ~/.openhands/hooks.json or {working_dir}/.openhands/hooks.json

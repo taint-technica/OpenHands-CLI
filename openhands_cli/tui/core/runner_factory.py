@@ -13,6 +13,7 @@ from textual.message_pump import MessagePump
 from textual.notifications import SeverityLevel
 
 from openhands.sdk.event.base import Event
+from openhands_cli.telemetry.langfuse_tracer import make_langfuse_callback
 from openhands_cli.tui.widgets.richlog_visualizer import (
     DEFAULT_AGENT_NAME,
 )
@@ -72,6 +73,22 @@ class RunnerFactory:
             json_callback if self._json_mode else None
         )
 
+        # Attach Langfuse tracer if enabled (env-controlled, zero overhead when off)
+        lf_callback = make_langfuse_callback(conversation_id)
+        if lf_callback is not None:
+            if event_callback is not None:
+                _prev = event_callback
+
+                def _combined(
+                    evt: Event, _a: Callable = _prev, _b: Callable = lf_callback
+                ) -> None:
+                    _a(evt)
+                    _b(evt)
+
+                event_callback = _combined
+            else:
+                event_callback = lf_callback
+
         runner = ConversationRunner(
             conversation_id,
             state=self._state,
@@ -82,6 +99,14 @@ class RunnerFactory:
             env_overrides_enabled=self._env_overrides_enabled,
             critic_disabled=self._critic_disabled,
         )
+
+        # Hook Langfuse into LLM telemetry for cost/token tracking
+        # Must happen after runner.conversation is created (which has the agent)
+        if lf_callback is not None and hasattr(lf_callback, "enable_llm_hooks"):
+            conversation = runner.conversation
+            agent = getattr(conversation, "agent", None)
+            if agent is not None:
+                lf_callback.enable_llm_hooks(agent)  # type: ignore[union-attr]
 
         # Attach conversation to state for metrics reading
         self._state.attach_conversation_state(runner.conversation.state)

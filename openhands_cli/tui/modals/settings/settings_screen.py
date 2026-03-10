@@ -57,6 +57,9 @@ class SettingsScreen(ModalScreen):
     )
     timeout_input: getters.query_one[Input] = getters.query_one("#timeout_input")
     max_tokens_input: getters.query_one[Input] = getters.query_one("#max_tokens_input")
+    max_output_tokens_input: getters.query_one[Input] = getters.query_one(
+        "#max_output_tokens_input"
+    )
     max_size_input: getters.query_one[Input] = getters.query_one("#max_size_input")
     basic_section: getters.query_one[Container] = getters.query_one("#basic_section")
     advanced_section: getters.query_one[Container] = getters.query_one(
@@ -169,6 +172,7 @@ class SettingsScreen(ModalScreen):
         self.memory_select.value = True
         self.timeout_input.value = ""
         self.max_tokens_input.value = ""
+        self.max_output_tokens_input.value = ""
         self.max_size_input.value = ""
 
     def _load_current_settings(self) -> None:
@@ -226,6 +230,13 @@ class SettingsScreen(ModalScreen):
             self.max_tokens_input.value = str(max_input)
         else:
             self.max_tokens_input.value = ""
+
+        # Max output tokens (optional) – show existing value if set
+        max_output = getattr(llm, "max_output_tokens", None)
+        if max_output is not None:
+            self.max_output_tokens_input.value = str(max_output)
+        else:
+            self.max_output_tokens_input.value = ""
 
         # Condenser max size (optional) – show existing value if set
         if (
@@ -352,6 +363,7 @@ class SettingsScreen(ModalScreen):
             )
             self.timeout_input.disabled = not advanced_settings_enabled
             self.max_tokens_input.disabled = not advanced_settings_enabled
+            self.max_output_tokens_input.disabled = not advanced_settings_enabled
             self.max_size_input.disabled = not advanced_settings_enabled
 
         except Exception:
@@ -445,6 +457,7 @@ class SettingsScreen(ModalScreen):
             memory_condensation_enabled=bool(self.memory_select.value),
             timeout=timeout_input_value,
             max_tokens=self.max_tokens_input.value,
+            max_output_tokens=self.max_output_tokens_input.value,
             max_size=self.max_size_input.value,
         )
 

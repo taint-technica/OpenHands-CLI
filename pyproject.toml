@@ -30,9 +30,17 @@ dependencies = [
   "httpx>=0.25.0",
   "textual-serve>=1.1.3",
   "streamingjson>=0.0.2",
+  "python-dotenv>=1.0.0",
 ]
 
 scripts = { openhands = "openhands_cli.entrypoint:main", "openhands-acp" = "openhands_cli.acp:main" }
+
+[project.optional-dependencies]
+# Enable Langfuse tracing via the official Langfuse Python client.
+# Set LANGFUSE_ENABLED=true + LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY to activate.
+langfuse = [
+    "langfuse>=3.14.5",
+]
 
 [dependency-groups]
 # Hatchling wheel target: include the package directory

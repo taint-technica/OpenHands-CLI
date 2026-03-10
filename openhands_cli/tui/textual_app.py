@@ -151,18 +151,13 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         """
         super().__init__(**kwargs)
 
-        # Load CLI settings for initial critic settings
         cli_settings = CliSettings.load()
-
-        # ConversationContainer holds reactive state for UI binding
         self.conversation_state = ConversationContainer(
             initial_confirmation_policy=initial_confirmation_policy or AlwaysConfirm(),
             initial_critic_settings=cli_settings.critic,
         )
 
-        # Store exit confirmation setting
         self.exit_confirmation = exit_confirmation
-
         # Store headless mode setting for auto-exit behavior
         self.headless_mode = headless_mode
 
@@ -186,7 +181,6 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             headless_mode=headless_mode,
         )
 
-        # Initialize conversation_id
         initial_conversation_id = (
             resume_conversation_id if resume_conversation_id else uuid.uuid4()
         )
@@ -209,10 +203,7 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
 
         self.plan_panel: PlanSidePanel = PlanSidePanel(self)
 
-        # Register the custom theme
         self.register_theme(OPENHANDS_THEME)
-
-        # Set the theme as active
         self.theme = "openhands"
 
     CSS_PATH = "textual_app.tcss"
@@ -276,7 +267,6 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         """Called when app starts."""
         from openhands_cli.stores import MissingEnvironmentVariablesError
 
-        # Check if user has existing settings
         try:
             initial_setup_required = SettingsScreen.is_initial_setup_required(
                 env_overrides_enabled=self.env_overrides_enabled
@@ -374,7 +364,6 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
 
     def action_open_settings(self) -> None:
         """Action to open the settings screen."""
-        # Check if conversation is running via ConversationContainer
         if self.conversation_state.running:
             self.notify(
                 "Settings are not available while a conversation is running. "
@@ -456,7 +445,6 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         # in SplashContent via data_bind
         self.conversation_state.set_loaded_resources(loaded_resources)
 
-        # Process any queued inputs
         self._process_queued_inputs()
 
     def _process_queued_inputs(self) -> None:
@@ -472,10 +460,7 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         if not self.pending_inputs:
             return
 
-        # Process the first queued input immediately
         user_input = self.pending_inputs.pop(0)
-
-        # Post to ConversationManager
         self.conversation_manager.post_message(SendMessage(user_input))
 
     def action_request_quit(self) -> None:
@@ -608,7 +593,6 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
 
     def action_pause_conversation(self) -> None:
         """Action to handle Esc key binding - pause the running conversation."""
-        # Post to ConversationManager to pause
         self.conversation_manager.post_message(PauseConversation())
 
     def action_toggle_history(self) -> None:
@@ -677,8 +661,8 @@ def main(
             the error is re-raised to be handled by the entrypoint.
     """
 
-    # Determine if envs are required to be configured
-    # Raise error before textual app is run to avoid traceback
+    # Validate env vars early - raises MissingEnvironmentVariablesError
+    # before Textual starts, to avoid a buried traceback.
     try:
         SettingsScreen.is_initial_setup_required(
             env_overrides_enabled=env_overrides_enabled
@@ -686,9 +670,8 @@ def main(
     except MissingEnvironmentVariablesError as e:
         raise e
 
-    # Determine initial confirmation policy from CLI arguments
     # If headless mode is enabled, always use NeverConfirm (auto-approve all actions)
-    initial_confirmation_policy = AlwaysConfirm()  # Default
+    initial_confirmation_policy = AlwaysConfirm()
     if headless or always_approve:
         initial_confirmation_policy = NeverConfirm()
     elif llm_approve:

@@ -25,6 +25,7 @@ Example:
     📁 Binary: dist/openhands
 """
 
+import glob
 import os
 import shutil
 import subprocess
@@ -102,6 +103,54 @@ def check_c_compiler() -> bool:
     return False
 
 
+def _find_site_packages() -> Path:
+    """Find the site-packages directory in .venv."""
+    matches = glob.glob(".venv/lib/python3.*/site-packages")
+    if not matches:
+        raise FileNotFoundError("Could not find site-packages in .venv")
+    return Path(matches[0])
+
+
+def apply_vendor_patches() -> list[tuple[Path, Path]]:
+    """Apply vendor patches by copying patched files over originals in .venv.
+
+    Returns a list of (original, backup) tuples for restoring later.
+    """
+    patches_dir = Path("vendor_patches")
+    if not patches_dir.exists():
+        print_info("No vendor_patches directory found, skipping")
+        return []
+
+    site_packages = _find_site_packages()
+    backups: list[tuple[Path, Path]] = []
+
+    for patch_file in patches_dir.rglob("*.py"):
+        relative = patch_file.relative_to(patches_dir)
+        target = site_packages / relative
+        backup = target.with_suffix(".py.bak")
+
+        if not target.exists():
+            print_warning(f"Vendor patch target not found: {target}")
+            continue
+
+        # Backup original
+        shutil.copy2(target, backup)
+        # Apply patch
+        shutil.copy2(patch_file, target)
+        backups.append((target, backup))
+        print_success(f"Applied vendor patch: {relative}")
+
+    return backups
+
+
+def restore_vendor_patches(backups: list[tuple[Path, Path]]) -> None:
+    """Restore original files from backups after build."""
+    for target, backup in backups:
+        if backup.exists():
+            shutil.move(str(backup), str(target))
+            print_success(f"Restored original: {target.name}")
+
+
 def clean_build_directories() -> None:
     """Clean up previous build artifacts."""
     print_info("Cleaning previous build artifacts...")
@@ -129,7 +178,23 @@ def build_with_nuitka() -> bool:
     print_info("This may take 2-5 minutes depending on your system...")
     print()
 
-    # Build command
+    # Get litellm package path to include all data files explicitly
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import litellm, os; print(os.path.dirname(litellm.__file__))",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    litellm_path = result.stdout.strip()
+    print_info(f"LiteLLM package path: {litellm_path}")
+
+    # Build command with explicit data file includes
+    # Note: --include-package-data=litellm includes ALL data files from litellm package
+    # This is necessary for litellm's JSON config files (endpoints.json, model_prices, etc.)
     cmd = [
         sys.executable,
         "-m",
@@ -139,17 +204,31 @@ def build_with_nuitka() -> bool:
         "--output-dir=dist",
         "--output-filename=openhands",
         "--include-package=openhands_cli",
+        "--include-package-data=openhands_cli",
         "--include-package=openhands.sdk",
         "--include-package=openhands.tools",
         "--include-package=textual",
         "--include-package=rich",
         "--include-package=prompt_toolkit",
         "--include-package=pydantic",
+        "--include-package-data=pydantic",
+        "--include-package=pydantic_core",
+        "--include-package-data=pydantic_core",
         "--include-package=litellm",
+        "--include-package-data=litellm",
+        # Explicitly include litellm data directories to ensure all JSON files are included
+        f"--include-data-dir={litellm_path}/containers=litellm/containers",
+        f"--include-data-dir={litellm_path}/llms=litellm/llms",
+        f"--include-data-dir={litellm_path}/integrations=litellm/integrations",
+        f"--include-data-dir={litellm_path}/litellm_core_utils=litellm/litellm_core_utils",
+        f"--include-data-dir={litellm_path}/proxy=litellm/proxy",
         "--include-package=tiktoken",
+        "--include-package-data=tiktoken",
         "--include-package=fastmcp",
+        "--include-package-data=fastmcp",
         "--include-package=mcp",
-        "--include-package=agent_client_protocol",
+        "--include-package-data=mcp",
+        "--include-package=acp",
         "--include-package=textual_autocomplete",
         "--include-package=textual_serve",
         "--include-package=typer",
@@ -159,11 +238,12 @@ def build_with_nuitka() -> bool:
         "--include-package=anyio",
         "--include-package=sniffio",
         "--include-package=certifi",
+        "--include-package-data=certifi",
         "--include-package=dotenv",
-        "--nofollow-imports",
+        "--include-package=annotated_types",
+        "--include-package=typing_extensions",
         "--assume-yes-for-downloads",
         "--python-flag=no_site",
-        "--python-flag=optimize",
         "--standalone",
         "openhands_cli/entrypoint.py",
     ]
@@ -261,9 +341,16 @@ def main() -> int:
     # Clean previous builds
     clean_build_directories()
 
+    # Apply vendor patches before build
+    backups = apply_vendor_patches()
+
     # Build
-    if not build_with_nuitka():
-        return 1
+    try:
+        if not build_with_nuitka():
+            return 1
+    finally:
+        # Always restore vendor patches after build
+        restore_vendor_patches(backups)
 
     # Verify build
     success, binary_path = verify_build()

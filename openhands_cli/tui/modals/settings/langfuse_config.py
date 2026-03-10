@@ -125,7 +125,9 @@ class LangfuseConfigModal(ModalScreen[bool]):
             "langfuse-project-name",
             "test-connection",
         ]:
-            widget = self.query_one(f"#{widget_id}", Input if widget_id != "test-connection" else Button)
+            widget = self.query_one(
+                f"#{widget_id}", Input if widget_id != "test-connection" else Button
+            )
             widget.disabled = not enabled
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:

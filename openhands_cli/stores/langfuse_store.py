@@ -7,7 +7,6 @@ including API credentials and server settings.
 import json
 import os
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -16,7 +15,9 @@ class LangfuseSettings(BaseModel):
     """Settings for Langfuse tracing integration."""
 
     enabled: bool = False
-    host: str = Field(default="http://localhost:3000", description="Langfuse server URL")
+    host: str = Field(
+        default="http://localhost:3000", description="Langfuse server URL"
+    )
     public_key: str = Field(default="", description="Langfuse public key")
     secret_key: str = Field(default="", description="Langfuse secret key")
     project_name: str = Field(
@@ -120,7 +121,7 @@ class LangfuseStore:
         settings.enabled = False
         self.save(settings)
 
-    def test_connection(self, settings: Optional[LangfuseSettings] = None) -> bool:
+    def test_connection(self, settings: LangfuseSettings | None = None) -> bool:
         """Test connection to Langfuse server.
 
         Args:

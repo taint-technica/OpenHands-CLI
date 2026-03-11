@@ -92,6 +92,11 @@ class InputAreaContainer(Container):
                 self._command_feedback()
             case "exit":
                 self._command_exit()
+            case "code_tree":
+                self._command_code_tree()
+            case "analysis_architect_and_framework":
+                # Send to agent for processing (not handled by TUI)
+                self._command_send_to_agent(event.command)
             case _:
                 self.app.notify(
                     title="Unknown Command",
@@ -181,3 +186,23 @@ class InputAreaContainer(Container):
             app.push_screen(ExitConfirmationModal())
         else:
             app.exit()
+
+    def _command_code_tree(self) -> None:
+        """Handle the /code_tree command to toggle the code tree panel."""
+        app = cast("OpenHandsApp", self.app)
+        app.action_toggle_code_tree()
+
+    def _command_send_to_agent(self, command: str) -> None:
+        """Send a command to the agent for processing.
+
+        Some commands (like /analysis_architect_and_framework) should be
+        handled by the ACP agent, not by the TUI. This method sends the
+        command as a regular message so the agent can process it.
+
+        Args:
+            command: The command name (without leading /)
+        """
+        from openhands_cli.tui.messages import SendMessage
+
+        # Send the full command as a message to the agent
+        self.post_message(SendMessage(content=f"/{command}"))

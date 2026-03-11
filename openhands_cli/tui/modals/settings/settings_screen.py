@@ -32,6 +32,7 @@ from openhands_cli.tui.modals.settings.components import (
     CriticSettingsTab,
     SettingsTab,
 )
+from openhands_cli.tui.modals.settings.langfuse_config import LangfuseConfigModal
 from openhands_cli.tui.modals.settings.utils import SettingsFormData, save_settings
 
 
@@ -130,6 +131,13 @@ class SettingsScreen(ModalScreen):
 
             # Buttons
             with Horizontal(id="button_container"):
+                # Langfuse Config Button
+                yield Button(
+                    "📊 Langfuse Tracing",
+                    variant="default",
+                    id="langfuse_button",
+                    classes="settings_button",
+                )
                 yield Button(
                     "Save",
                     variant="primary",
@@ -416,6 +424,8 @@ class SettingsScreen(ModalScreen):
             self._save_settings()
         elif event.button.id == "cancel_button":
             self._handle_cancel()
+        elif event.button.id == "langfuse_button":
+            self._open_langfuse_config()
 
     def action_cancel(self) -> None:
         """Handle escape key to cancel settings."""
@@ -427,6 +437,12 @@ class SettingsScreen(ModalScreen):
 
         if self.on_first_time_settings_cancelled and self.is_initial_setup:
             self.on_first_time_settings_cancelled()
+
+    def _open_langfuse_config(self) -> None:
+        """Open Langfuse configuration modal."""
+        # Don't use callback to avoid Textual screen dismiss issues
+        # Just push the screen without callback
+        self.app.push_screen(LangfuseConfigModal())
 
     def _save_settings(self) -> None:
         """Save the current settings."""

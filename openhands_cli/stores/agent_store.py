@@ -21,6 +21,7 @@ from openhands.sdk.conversation.persistence_const import BASE_STATE
 from openhands.sdk.critic.base import CriticBase
 from openhands.sdk.critic.impl.api import APIBasedCritic
 from openhands.sdk.tool import Tool
+from openhands_cli.instructions import get_dev_skills
 from openhands_cli.locations import (
     AGENT_SETTINGS_PATH,
     get_conversations_dir,
@@ -29,6 +30,7 @@ from openhands_cli.locations import (
 )
 from openhands_cli.mcp.mcp_utils import list_enabled_servers
 from openhands_cli.stores.cli_settings import CliSettings
+from openhands_cli.stores.langfuse_store import LangfuseStore
 from openhands_cli.utils import (
     get_default_cli_agent,
     get_default_cli_tools,
@@ -387,7 +389,16 @@ class AgentStore:
         )
 
     def _build_agent_context(self) -> AgentContext:
-        skills = load_project_skills(get_work_dir())
+        # Load developer-defined skills (hardcoded, compiled with Nuitka)
+        dev_skills = get_dev_skills()
+
+        # Load project skills (from .agents/skills/, .openhands/skills/)
+        project_skills = load_project_skills(get_work_dir())
+
+        # Combine skills: dev skills + project skills
+        # User skills will be loaded separately via load_user_skills=True
+        all_skills = dev_skills + project_skills
+
         system_suffix = "\n".join(
             [
                 f"Your current working directory is: {get_work_dir()}",
@@ -395,11 +406,37 @@ class AgentStore:
             ]
         )
         return AgentContext(
-            skills=skills,
+            skills=all_skills,
             system_message_suffix=system_suffix,
             load_user_skills=True,
             load_public_skills=True,
         )
+
+    def _enable_langfuse_callback(self, langfuse_store: LangfuseStore) -> None:
+        """Enable Langfuse tracing for LiteLLM."""
+        settings = langfuse_store.load()
+        if not settings.is_valid():
+            return
+
+        # Set environment variables for Langfuse
+        env_vars = settings.to_env_vars()
+        for key, value in env_vars.items():
+            os.environ[key] = value
+
+        # Enable Langfuse callbacks for LiteLLM
+        try:
+            import litellm
+
+            # Set Langfuse as success and failure callback
+            litellm.success_callback = ["langfuse"]
+            litellm.failure_callback = ["langfuse"]
+
+            print_formatted_text(
+                HTML(f"<dim>✓ Langfuse tracing enabled: {settings.host}</dim>")
+            )
+        except Exception as e:
+            # Silently fail - Langfuse is optional
+            print_formatted_text(HTML(f"<dim>⚠ Langfuse setup failed: {str(e)}</dim>"))
 
     def _maybe_build_condenser(
         self, agent: Agent, *, session_id: str | None
@@ -428,6 +465,11 @@ class AgentStore:
         )
 
         agent_context = self._build_agent_context()
+
+        # Enable Langfuse tracing if configured
+        langfuse_store = LangfuseStore()
+        if langfuse_store.is_enabled():
+            self._enable_langfuse_callback(langfuse_store)
 
         enabled_servers = list_enabled_servers()
         mcp_config = {"mcpServers": enabled_servers} if enabled_servers else {}

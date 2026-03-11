@@ -51,6 +51,15 @@ def get_available_slash_commands() -> list[AvailableCommand]:
                 root=UnstructuredCommandInput(hint=mode_options),
             ),
         ),
+        AvailableCommand(
+            name="analysis_architect_and_framework",
+            description="Analyze code architecture and framework structure",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(
+                    hint="File path | Folder path | Module name | Service name",
+                ),
+            ),
+        ),
     ]
 
 
@@ -219,6 +228,55 @@ def handle_confirm_argument(
 
     # Return success message with the new mode
     return get_confirm_success_text(mode), mode
+
+
+def handle_analysis_architect_and_framework(
+    argument: str,
+) -> str:
+    """Handle /analysis_architect_and_framework command and return response.
+
+    This command activates the Analysis Architect & Framework skill to analyze
+    code architecture and framework structure.
+
+    Args:
+        argument: Command argument (file path, folder path, module name, etc.)
+
+    Returns:
+        Response text to send to the user
+    """
+    if not argument or not argument.strip():
+        return (
+            "Analysis Architect & Framework\n\n"
+            "This tool helps analyze software architecture and framework structures.\n\n"
+            "Usage: /analysis_architect_and_framework <target>\n\n"
+            "Examples:\n"
+            "  /analysis_architect_and_framework src/main.py\n"
+            "  /analysis_architect_and_framework ./services/user_service\n"
+            "  /analysis_architect_and_framework auth_module\n\n"
+            "Supported analysis levels:\n"
+            "  - Single File: Analyze structure of a single code file\n"
+            "  - Multi Files: Analyze relationships between multiple files\n"
+            "  - Module: Analyze complete functional modules\n"
+            "  - Service: Analyze service-oriented architecture components\n"
+            "  - Router: Analyze routing and request handling patterns\n"
+            "  - Domain: Analyze domain-driven design implementation\n\n"
+            "Please specify a file, folder, module, or service to analyze."
+        )
+
+    # Return a message indicating the analysis will be performed
+    target = argument.strip()
+    return (
+        f"Starting Architecture Analysis for: {target}\n\n"
+        "I will analyze the code structure, dependencies, design patterns, "
+        "and architectural decisions. This includes:\n\n"
+        "1. **Structure Analysis**: Understanding code organization and responsibilities\n"
+        "2. **Dependency Mapping**: Identifying imports, dependencies, and interactions\n"
+        "3. **Pattern Detection**: Recognizing design patterns and architectural styles\n"
+        "4. **Framework Analysis**: Examining framework-specific configurations and patterns\n"
+        "5. **Documentation**: Generating architecture documentation and recommendations\n\n"
+        f"Analyzing target: {target}\n\n"
+        "Please wait while I examine the codebase..."
+    )
 
 
 def get_unknown_command_text(command: str) -> str:

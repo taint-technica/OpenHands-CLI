@@ -16,6 +16,18 @@ The CLI will automatically scan and load user skills at runtime.
 from openhands.sdk.context import Skill
 from openhands.sdk.context.skills.trigger import KeywordTrigger
 
+from openhands_cli.instructions.utgen import (
+    CLI_ARGUMENTS,
+    ERROR_HANDLING_GUIDE,
+    PYTHON_SCRIPT_TEMPLATE,
+    PYTHON_WORKFLOW,
+    KEPLOY_KEYWORDS,
+    JAVA_SCRIPT_TEMPLATE,
+    JAVA_WORKFLOW,
+    GEN_SCRIPT_FILE,
+    OVERALL_WORKFLOW,
+)
+
 
 # ============================================================================
 # SECURITY SKILLS (LUÔN ACTIVE - PRIORITY CAO NHẤT)
@@ -246,427 +258,46 @@ Explain what modules are consisted in the project, basic functions for each modu
 
 KEPLOY_GEN_UNIT_TEST = Skill(
     name="keploy_gen_unit_test",
-    content="""
+    content=f"""
 # Keploy Unit Test Generation for Ubuntu
 
 You are an expert in generating unit tests using Keploy AI-powered tool on Ubuntu systems.
 
-## Keploy Gen Command Arguments
+{CLI_ARGUMENTS}
 
-```bash
---source-file-path        : Path to the source file to test
---test-file-path          : Path to the output test file
---coverage-report-path    : Path to the code coverage report file (default: "coverage.xml")
---test-command            : Command to run tests and generate coverage report
---coverage-format         : Type of coverage report (cobertura for Python, jacoco for Java)
---expected-coverage       : Desired coverage percentage (default: 85)
---max-iterations          : Maximum number of iterations (default: 5)
---test-dir                : Path to the test directory
---llm-base-url            : Base URL for the AI model
---model                   : Model to use (default: "claude-haiku-4-5")
---llm-api-version         : API version of the LLM
---additional-prompt       : Additional prompt for the AI model
---function-under-test     : Specific function for test generation (default: "")
---flakiness               : Run flakiness check (default: false)
---server-url              : URL of custom server for tracking
-```
-
-## Default Values
-- expected-coverage: 85
-- max-iterations: 5
-- model: "claude-haiku-4-5"
-- coverage-report-path (Python): "coverage.xml"
-- coverage-report-path (Java): "target/site/jacoco/jacoco.xml"
-- coverage-format (Python): "cobertura"
-- coverage-format (Java): "jacoco"
-- function-under-test: ""
-- flakiness: false
-
-## Script Templates with Placeholders
+## Script Templates
 
 ### Python Project Script Template
 
 Save as `run_keploy_gen_python.sh`:
 
-```bash
-#!/bin/bash
-
-# ============================================================================
-# Keploy Gen Script for Python Projects
-# Fill in the placeholders below before running
-# ============================================================================
-
-# --- PLACEHOLDERS TO FILL ---
-SOURCE_FILE_PATH="{{SOURCE_FILE_PATH}}"           # e.g., "backend/service/resume_evaluation.py"
-TEST_FILE_PATH="{{TEST_FILE_PATH}}"               # e.g., "test/test_single_file/test_resume_evaluation.py"
-COVERAGE_REPORT_PATH="{{COVERAGE_REPORT_PATH:-coverage.xml}}"
-COVERAGE_FORMAT="{{COVERAGE_FORMAT:-cobertura}}"
-TEST_COMMAND="{{TEST_COMMAND}}"                   # e.g., "uv run coverage run --include=backend/service/resume_evaluation.py -m pytest test/test_single_file/test_resume_evaluation.py && uv run coverage xml"
-EXPECTED_COVERAGE="{{EXPECTED_COVERAGE:-85}}"
-MAX_ITERATIONS="{{MAX_ITERATIONS:-5}}"
-LLM_BASE_URL="{{LLM_BASE_URL}}"                   # e.g., "http://0.0.0.0:4000"
-MODEL="{{MODEL:-claude-haiku-4-5}}"
-LLM_API_VERSION="{{LLM_API_VERSION:-}}"
-ADDITIONAL_PROMPT="{{ADDITIONAL_PROMPT}}"         # Content from architect.md (escape quotes)
-FUNCTION_UNDER_TEST="{{FUNCTION_UNDER_TEST:-}}"
-FLAKINESS="{{FLAKINESS:-false}}"
-SERVER_URL="{{SERVER_URL:-}}"
-# ----------------------------
-
-# Activate virtual environment
-source .venv/bin/activate
-
-# Set API key
-export API_KEY="dummy"
-
-# Build the keploy gen command
-KEPLOY_CMD="keploy gen"
-
-KEPLOY_CMD+=" --sourceFilePath=\"$SOURCE_FILE_PATH\""
-KEPLOY_CMD+=" --testFilePath=\"$TEST_FILE_PATH\""
-KEPLOY_CMD+=" --coverageReportPath=\"$COVERAGE_REPORT_PATH\""
-KEPLOY_CMD+=" --coverageFormat=\"$COVERAGE_FORMAT\""
-KEPLOY_CMD+=" --testCommand=\"$TEST_COMMAND\""
-KEPLOY_CMD+=" --expected-coverage=$EXPECTED_COVERAGE"
-KEPLOY_CMD+=" --maxIterations=$MAX_ITERATIONS"
-
-if [ -n "$LLM_BASE_URL" ]; then
-    KEPLOY_CMD+=" --llmBaseUrl=\"$LLM_BASE_URL\""
-fi
-
-KEPLOY_CMD+=" --model=\"$MODEL\""
-
-if [ -n "$LLM_API_VERSION" ]; then
-    KEPLOY_CMD+=" --llm-api-version=\"$LLM_API_VERSION\""
-fi
-
-if [ -n "$ADDITIONAL_PROMPT" ]; then
-    KEPLOY_CMD+=" --additional-prompt=\"$ADDITIONAL_PROMPT\""
-fi
-
-if [ -n "$FUNCTION_UNDER_TEST" ]; then
-    KEPLOY_CMD+=" --function-under-test=\"$FUNCTION_UNDER_TEST\""
-fi
-
-if [ "$FLAKINESS" = "true" ]; then
-    KEPLOY_CMD+=" --flakiness"
-fi
-
-if [ -n "$SERVER_URL" ]; then
-    KEPLOY_CMD+=" --server-url=\"$SERVER_URL\""
-fi
-
-# Display the command
-echo "=========================================="
-echo "Running Keploy Gen for Python Project"
-echo "=========================================="
-echo "Command: $KEPLOY_CMD"
-echo "=========================================="
-
-# Execute the command
-eval $KEPLOY_CMD
-
-# Capture exit code
-EXIT_CODE=$?
-
-if [ $EXIT_CODE -ne 0 ]; then
-    echo "=========================================="
-    echo "ERROR: Keploy gen failed with exit code $EXIT_CODE"
-    echo "=========================================="
-    exit $EXIT_CODE
-else
-    echo "=========================================="
-    echo "SUCCESS: Keploy gen completed successfully"
-    echo "=========================================="
-fi
-```
+{PYTHON_SCRIPT_TEMPLATE}
 
 ### Java Project Script Template
 
 Save as `run_keploy_gen_java.sh`:
 
-```bash
-#!/bin/bash
+{JAVA_SCRIPT_TEMPLATE}
 
-# ============================================================================
-# Keploy Gen Script for Java Projects
-# Fill in the placeholders below before running
-# ============================================================================
+## Core Principle: Single Script File
 
-# --- PLACEHOLDERS TO FILL ---
-SOURCE_FILE_PATH="{{SOURCE_FILE_PATH}}"           # e.g., "src/main/java/com/example/jpa_querydsl_demo/service/ContactService.java"
-TEST_FILE_PATH="{{TEST_FILE_PATH}}"               # e.g., "src/test/java/com/example/jpa_querydsl_demo/service/ContactServiceTest.java"
-COVERAGE_REPORT_PATH="{{COVERAGE_REPORT_PATH:-target/site/jacoco/jacoco.xml}}"
-COVERAGE_FORMAT="{{COVERAGE_FORMAT:-jacoco}}"
-TEST_COMMAND="{{TEST_COMMAND}}"                   # e.g., "mvn verify -P coverage -Dtest=ContactServiceTest"
-EXPECTED_COVERAGE="{{EXPECTED_COVERAGE:-85}}"
-MAX_ITERATIONS="{{MAX_ITERATIONS:-5}}"
-LLM_BASE_URL="{{LLM_BASE_URL}}"                   # e.g., "http://0.0.0.0:4000"
-MODEL="{{MODEL:-claude-haiku-4-5}}"
-LLM_API_VERSION="{{LLM_API_VERSION:-}}"
-ADDITIONAL_PROMPT="{{ADDITIONAL_PROMPT}}"         # Content from architect.md (escape quotes)
-FUNCTION_UNDER_TEST="{{FUNCTION_UNDER_TEST:-}}"
-FLAKINESS="{{FLAKINESS:-false}}"
-SERVER_URL="{{SERVER_URL:-}}"
-# ----------------------------
+{GEN_SCRIPT_FILE}
 
-# Set environment variables
-export API_KEY="dummy"
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-export PATH=/usr/bin:/usr/local/bin:$PATH
+## Project Setup
 
-# Clean Maven build
-echo "Running mvn clean..."
-mvn clean
+{PYTHON_WORKFLOW}
 
-# Build the keploy gen command
-KEPLOY_CMD="keploy gen"
-
-KEPLOY_CMD+=" --sourceFilePath=\"$SOURCE_FILE_PATH\""
-KEPLOY_CMD+=" --testFilePath=\"$TEST_FILE_PATH\""
-KEPLOY_CMD+=" --coverageReportPath=\"$COVERAGE_REPORT_PATH\""
-KEPLOY_CMD+=" --coverageFormat=\"$COVERAGE_FORMAT\""
-KEPLOY_CMD+=" --testCommand=\"$TEST_COMMAND\""
-KEPLOY_CMD+=" --expected-coverage=$EXPECTED_COVERAGE"
-KEPLOY_CMD+=" --maxIterations=$MAX_ITERATIONS"
-
-if [ -n "$LLM_BASE_URL" ]; then
-    KEPLOY_CMD+=" --llmBaseUrl=\"$LLM_BASE_URL\""
-fi
-
-KEPLOY_CMD+=" --model=\"$MODEL\""
-
-if [ -n "$LLM_API_VERSION" ]; then
-    KEPLOY_CMD+=" --llm-api-version=\"$LLM_API_VERSION\""
-fi
-
-if [ -n "$ADDITIONAL_PROMPT" ]; then
-    KEPLOY_CMD+=" --additional-prompt=\"$ADDITIONAL_PROMPT\""
-fi
-
-if [ -n "$FUNCTION_UNDER_TEST" ]; then
-    KEPLOY_CMD+=" --function-under-test=\"$FUNCTION_UNDER_TEST\""
-fi
-
-if [ "$FLAKINESS" = "true" ]; then
-    KEPLOY_CMD+=" --flakiness"
-fi
-
-if [ -n "$SERVER_URL" ]; then
-    KEPLOY_CMD+=" --server-url=\"$SERVER_URL\""
-fi
-
-# Display the command
-echo "=========================================="
-echo "Running Keploy Gen for Java Project"
-echo "=========================================="
-echo "Command: $KEPLOY_CMD"
-echo "=========================================="
-
-# Execute the command
-eval $KEPLOY_CMD
-
-# Capture exit code
-EXIT_CODE=$?
-
-if [ $EXIT_CODE -ne 0 ]; then
-    echo "=========================================="
-    echo "ERROR: Keploy gen failed with exit code $EXIT_CODE"
-    echo "=========================================="
-    exit $EXIT_CODE
-else
-    echo "=========================================="
-    echo "SUCCESS: Keploy gen completed successfully"
-    echo "=========================================="
-fi
-```
-
-## Python Project Setup
-
-### 1. Check and Install Dependencies
-Before running Keploy, ensure the following packages are installed:
-```bash
-source .venv/bin/activate
-uv add pytest pytest-asyncio coverage
-```
-
-### 2. Coverage Report Configuration
-For Python projects:
-```
---coverageReportPath="coverage.xml"
---coverageFormat="cobertura"
-```
-
-### 3. Test Command Template
-```bash
---testCommand="uv run coverage run --include=<source_file_path> -m pytest <test_file_path> && uv run coverage xml"
-```
-
-### 4. Complete Python Example
-```bash
-source .venv/bin/activate
-export API_KEY="dummy"
-
-keploy gen \\
-  --sourceFilePath="backend/service/resume_evaluation.py" \\
-  --testFilePath="test/test_single_file/test_resume_evaluation.py" \\
-  --coverageReportPath="coverage.xml" \\
-  --testCommand="uv run coverage run --include=backend/service/resume_evaluation.py -m pytest test/test_single_file/test_resume_evaluation.py && uv run coverage xml" \\
-  --expected-coverage=85 \\
-  --maxIterations=5 \\
-  --llmBaseUrl="http://0.0.0.0:4000" \\
-  --model="claude-haiku-4-5"
-```
-
-## Java Project Setup
-
-### 1. Environment Setup
-```bash
-export API_KEY="dummy"
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-export PATH=/usr/bin:/usr/local/bin:$PATH
-```
-
-### 2. Check Build Tool
-Determine if the project uses Maven or Gradle:
-- Maven: Look for `pom.xml`
-- Gradle: Look for `build.gradle` or `build.gradle.kts`
-
-### 3. Install Dependencies (Maven)
-Ensure coverage dependencies in `pom.xml`:
-```xml
-<profile>
-    <id>coverage</id>
-    <dependencies>
-        <dependency>
-            <groupId>org.jacoco</groupId>
-            <artifactId>jacoco-maven-plugin</artifactId>
-            <version>0.8.11</version>
-        </dependency>
-    </dependencies>
-</profile>
-```
-
-### 4. Coverage Report Configuration
-For Java projects:
-```
---coverageReportPath="target/site/jacoco/jacoco.xml"
---coverageFormat="jacoco"
-```
-
-### 5. Test Command Template (Maven)
-```bash
---testCommand="mvn verify -P coverage -Dtest=<TestClassname>"
-```
-
-### 6. Complete Java Example
-```bash
-export API_KEY="dummy"
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-export PATH=/usr/bin:/usr/local/bin:$PATH
-
-mvn clean
-
-keploy gen \\
-  --sourceFilePath="src/main/java/com/example/jpa_querydsl_demo/service/ContactService.java" \\
-  --testFilePath="src/test/java/com/example/jpa_querydsl_demo/service/ContactServiceTest.java" \\
-  --coverageReportPath="target/site/jacoco/jacoco.xml" \\
-  --coverageFormat="jacoco" \\
-  --testCommand="mvn verify -P coverage -Dtest=ContactServiceTest" \\
-  --expected-coverage=85 \\
-  --maxIterations=2 \\
-  --llmBaseUrl="http://0.0.0.0:4000" \\
-  --model="claude-haiku-4-5"
-```
+{JAVA_WORKFLOW}
 
 ## Workflow Steps
 
-### Step 1: Extract User Requirements
-From user input, extract:
-- Source file path to test
-- Expected coverage (default: 85)
-- Max iterations (default: 5)
-- Model (default: "claude-haiku-4-5")
-- Function under test (optional, default: "")
-- Flakiness check (optional, default: false)
+{OVERALL_WORKFLOW}
 
-### Step 2: Check architect.md
-- Check if `architect.md` exists in the project root
-- If not exists, use slash command `/analysis_architect_and_framework` to generate it
-- Include architect.md content in `--additional-prompt` argument
-
-### Step 3: Check/Create Test File
-- Test file location follows source file structure but in test directory
-- Python example: `src/service/file.py` → `tests/service/test_file.py`
-- Java example: `src/main/java/com/example/Service.java` → `src/test/java/com/example/ServiceTest.java`
-- If test file doesn't exist, create it with basic test class structure
-
-### Step 4: Detect Project Type
-- **Python**: Look for `pyproject.toml`, `setup.py`, `requirements.txt`, or `.py` files
-- **Java**: Look for `pom.xml` (Maven) or `build.gradle` (Gradle)
-
-### Step 5: Install Dependencies
-- **Python**: `uv add pytest pytest-asyncio coverage`
-- **Java (Maven)**: Ensure jacoco-maven-plugin in pom.xml
-- **Java (Gradle)**: Ensure jacoco plugin in build.gradle
-
-### Step 6: Build Keploy Command
-Construct the keploy gen command with:
-- Project-appropriate paths and test command
-- Correct coverage format (cobertura for Python, jacoco for Java)
-- architect.md content in additional-prompt
-- User-specified or default values for all arguments
-
-### Step 7: Execute and Monitor
-- Display full command before execution
-- Show real-time logs during execution
-- If errors occur, display complete error logs
-- Provide clear error messages and suggestions
-
-## Error Handling
-
-### Common Issues and Solutions
-
-1. **Keploy not found**
-   - Ensure Keploy is installed: `which keploy`
-   - Install if needed
-
-2. **Coverage report not generated**
-   - Verify test command is correct
-   - Check coverage package is installed
-
-3. **Test file not found**
-   - Create test file with basic structure before running keploy gen
-
-4. **LLM connection error**
-   - Verify `--llm-base-url` is accessible
-   - Check network connectivity
-
-5. **Low coverage after max iterations**
-   - Review generated tests
-   - Consider increasing max iterations
-   - Add specific guidance in additional-prompt
-
-## Important Notes
-
-- Always display full command and logs during execution
-- Never hide error messages - show complete error output
-- Test file naming convention: `<SourceFile>Test.java` for Java, `test_<source_file>.py` for Python
-- Ensure API_KEY environment variable is set (can be "dummy" for local LLM)
-- For Java, always run `mvn clean` before keploy gen to ensure clean state
-- When using script templates, replace all `{{PLACEHOLDER}}` values with actual values
-- For ADDITIONAL_PROMPT, escape double quotes and newlines properly
-- Script templates use bash parameter expansion with defaults (e.g., `${VAR:-default}`)
-- Make scripts executable: `chmod +x run_keploy_gen_python.sh` or `chmod +x run_keploy_gen_java.sh`
+{ERROR_HANDLING_GUIDE}
 """,
     trigger=KeywordTrigger(
         type="keyword",
-        keywords=[
-            "keploy gen",
-            "keploy unit test",
-            "generate unit test with keploy",
-            "keploy test generation",
-        ],
+        keywords=KEPLOY_KEYWORDS,
     ),
     description="Keploy AI-powered unit test generation for Python and Java projects on Ubuntu",
 )
@@ -697,7 +328,7 @@ def get_dev_skills() -> list[Skill]:
         # SECURITY SKILLS (HIGHEST PRIORITY - MUST BE FIRST)
         ANTI_LEAK_INSTRUCTIONS,
         # Always-active skills (go into REPO_CONTEXT)
-        GENERATE_UNIT_TEST,
+        # GENERATE_UNIT_TEST,
         ANALYSIS_ARCHITECT_AND_FRAMEWORK,
         KEPLOY_GEN_UNIT_TEST,
     ]

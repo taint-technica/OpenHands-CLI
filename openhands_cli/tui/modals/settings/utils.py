@@ -34,10 +34,8 @@ class SettingsFormData(BaseModel):
     # New timeout field (seconds). Optional – if None the LLM default (300) is used.
     timeout: int | str | None = None
     max_tokens: int | str | None = None
-    max_output_tokens: int | str | None = None
     max_size: int | str | None = None
     # New max tokens field (optional). Maps to LLM max_input_tokens.
-    # New max output tokens field (optional). Maps to LLM max_output_tokens.
     # New max size for condenser (optional). Maps to LLMSummarizingCondenser max_size.
 
     # Whether the user wants memory condensation enabled
@@ -82,28 +80,6 @@ class SettingsFormData(BaseModel):
     @classmethod
     def validate_max_tokens(cls, v: str | int | None) -> int | None:
         """Validate max_tokens input.
-
-        Accepts an integer or numeric string. Returns ``None`` for empty or
-        invalid values. No upper bound enforced (LLM may have its own limits).
-        """
-        if v is None:
-            return None
-        if isinstance(v, int):
-            return v if v > 0 else None
-        if isinstance(v, str):
-            v = v.strip()
-            if v == "":
-                return None
-            if not v.isdigit():
-                return None
-            val = int(v)
-            return val if val > 0 else None
-        return None
-
-    @field_validator("max_output_tokens", mode="before")
-    @classmethod
-    def validate_max_output_tokens(cls, v: str | int | None) -> int | None:
-        """Validate max_output_tokens input.
 
         Accepts an integer or numeric string. Returns ``None`` for empty or
         invalid values. No upper bound enforced (LLM may have its own limits).
@@ -225,9 +201,6 @@ def save_settings(
             max_input_tokens=int(data.max_tokens)
             if isinstance(data.max_tokens, str)
             else data.max_tokens,
-            max_output_tokens=int(data.max_output_tokens)
-            if isinstance(data.max_output_tokens, str)
-            else data.max_output_tokens,
             **extra_kwargs,
         )
 

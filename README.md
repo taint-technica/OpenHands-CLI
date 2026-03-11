@@ -64,7 +64,7 @@ OpenHands CLI stores configuration under `~/.openhands/` (created on first run):
 - `cli_config.json`: CLI/TUI preferences (e.g., critic enabled)
 - `mcp.json`: MCP server configuration
 
-By default, environment variables like `LLM_API_KEY`, `LLM_MODEL`, and `LLM_BASE_URL` are ignored; pass `--override-with-envs` to apply them (not persisted).
+Configure your LLM settings directly in the app setup flow.
 
 ### Running Modes
 

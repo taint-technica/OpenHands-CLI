@@ -26,7 +26,6 @@ def load_agent_specs(
     mcp_servers: dict[str, dict[str, Any]] | None = None,
     skills: list[Skill] | None = None,
     *,
-    env_overrides_enabled: bool = False,
     critic_disabled: bool = False,
 ) -> Agent:
     """Load agent specifications.
@@ -35,9 +34,6 @@ def load_agent_specs(
         conversation_id: Optional conversation ID for session tracking
         mcp_servers: Optional dict of MCP servers to augment agent configuration
         skills: Optional list of skills to include in the agent configuration
-        env_overrides_enabled: If True, environment variables will override
-            stored LLM settings, and agent can be created from env vars if no
-            disk config exists.
         critic_disabled: If True, critic functionality will be disabled.
 
     Returns:
@@ -49,7 +45,6 @@ def load_agent_specs(
     agent_store = AgentStore()
     agent = agent_store.load_or_create(
         session_id=conversation_id,
-        env_overrides_enabled=env_overrides_enabled,
         critic_disabled=critic_disabled,
     )
     if not agent:
@@ -91,7 +86,6 @@ def setup_conversation(
     visualizer: ConversationVisualizer | None = None,
     event_callback: Callable[[Event], None] | None = None,
     *,
-    env_overrides_enabled: bool = False,
     critic_disabled: bool = False,
 ) -> BaseConversation:
     """
@@ -102,9 +96,6 @@ def setup_conversation(
             will be generated.
         visualizer: Optional visualizer to use. If None, a default will be used
         event_callback: Optional callback function to handle events (e.g., JSON output)
-        env_overrides_enabled: If True, environment variables will override
-            stored LLM settings, and agent can be created from env vars if no
-            disk config exists.
         critic_disabled: If True, critic functionality will be disabled.
 
     Raises:
@@ -115,7 +106,6 @@ def setup_conversation(
 
     agent = load_agent_specs(
         str(conversation_id),
-        env_overrides_enabled=env_overrides_enabled,
         critic_disabled=critic_disabled,
     )
 

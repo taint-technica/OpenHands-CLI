@@ -58,9 +58,6 @@ class SettingsScreen(ModalScreen):
     )
     timeout_input: getters.query_one[Input] = getters.query_one("#timeout_input")
     max_tokens_input: getters.query_one[Input] = getters.query_one("#max_tokens_input")
-    max_output_tokens_input: getters.query_one[Input] = getters.query_one(
-        "#max_output_tokens_input"
-    )
     max_size_input: getters.query_one[Input] = getters.query_one("#max_size_input")
     basic_section: getters.query_one[Container] = getters.query_one("#basic_section")
     advanced_section: getters.query_one[Container] = getters.query_one(
@@ -71,7 +68,6 @@ class SettingsScreen(ModalScreen):
         self,
         on_settings_saved: Callable[[], None] | list[Callable[[], None]] | None = None,
         on_first_time_settings_cancelled: Callable[[], None] | None = None,
-        env_overrides_enabled: bool = False,
         **kwargs,
     ):
         """Initialize the settings screen.
@@ -80,17 +76,13 @@ class SettingsScreen(ModalScreen):
             on_settings_saved: Callback(s) to invoke when settings are saved
             on_first_time_settings_cancelled: Callback to invoke when settings are
                 cancelled during first-time setup
-            env_overrides_enabled: If True, environment variables will override
-                stored LLM settings when checking for initial setup
         """
         super().__init__(**kwargs)
         self.agent_store = AgentStore()
         self.current_agent = self.agent_store.load_from_disk()
         self.is_advanced_mode = False
         self.message_widget = None
-        self.is_initial_setup = SettingsScreen.is_initial_setup_required(
-            env_overrides_enabled=env_overrides_enabled
-        )
+        self.is_initial_setup = SettingsScreen.is_initial_setup_required()
 
         # Convert single callback to list for uniform handling
         if on_settings_saved is None:
@@ -180,7 +172,6 @@ class SettingsScreen(ModalScreen):
         self.memory_select.value = True
         self.timeout_input.value = ""
         self.max_tokens_input.value = ""
-        self.max_output_tokens_input.value = ""
         self.max_size_input.value = ""
 
     def _load_current_settings(self) -> None:
@@ -238,13 +229,6 @@ class SettingsScreen(ModalScreen):
             self.max_tokens_input.value = str(max_input)
         else:
             self.max_tokens_input.value = ""
-
-        # Max output tokens (optional) – show existing value if set
-        max_output = getattr(llm, "max_output_tokens", None)
-        if max_output is not None:
-            self.max_output_tokens_input.value = str(max_output)
-        else:
-            self.max_output_tokens_input.value = ""
 
         # Condenser max size (optional) – show existing value if set
         if (
@@ -371,7 +355,6 @@ class SettingsScreen(ModalScreen):
             )
             self.timeout_input.disabled = not advanced_settings_enabled
             self.max_tokens_input.disabled = not advanced_settings_enabled
-            self.max_output_tokens_input.disabled = not advanced_settings_enabled
             self.max_size_input.disabled = not advanced_settings_enabled
 
         except Exception:
@@ -473,7 +456,6 @@ class SettingsScreen(ModalScreen):
             memory_condensation_enabled=bool(self.memory_select.value),
             timeout=timeout_input_value,
             max_tokens=self.max_tokens_input.value,
-            max_output_tokens=self.max_output_tokens_input.value,
             max_size=self.max_size_input.value,
         )
 
@@ -552,28 +534,12 @@ class SettingsScreen(ModalScreen):
             pass  # Container may not exist in all contexts
 
     @staticmethod
-    def is_initial_setup_required(env_overrides_enabled: bool = False) -> bool:
+    def is_initial_setup_required() -> bool:
         """Check if initial setup is required.
 
-        Args:
-            env_overrides_enabled: If True, environment variables will override
-                stored LLM settings.
-
         Returns:
-            True if initial setup is needed (no existing settings and no valid
-            env overrides), False otherwise.
-
-        Raises:
-            MissingEnvironmentVariablesError: If env_overrides_enabled is True
-                but required environment variables (LLM_API_KEY, LLM_MODEL) are
-                missing.
-
-        Note: AgentStore.load_or_create() handles creating an agent from environment
-        variables when env_overrides_enabled is True and required env vars
-        (LLM_API_KEY and LLM_MODEL) are set.
+            True if initial setup is needed (no existing settings), False otherwise.
         """
         agent_store = AgentStore()
-        existing_agent = agent_store.load_or_create(
-            env_overrides_enabled=env_overrides_enabled
-        )
+        existing_agent = agent_store.load_or_create()
         return existing_agent is None

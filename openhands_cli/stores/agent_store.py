@@ -6,8 +6,6 @@ import re
 from typing import Any
 
 from prompt_toolkit import HTML, print_formatted_text
-from pydantic import BaseModel, SecretStr
-from rich.console import Console
 
 from openhands.sdk import (
     LLM,
@@ -32,7 +30,6 @@ from openhands_cli.mcp.mcp_utils import list_enabled_servers
 from openhands_cli.stores.cli_settings import CliSettings
 from openhands_cli.stores.langfuse_store import LangfuseStore
 from openhands_cli.utils import (
-    get_default_cli_agent,
     get_default_cli_tools,
     get_llm_metadata,
     get_os_description,
@@ -122,139 +119,6 @@ def get_default_critic(llm: LLM, *, enable_critic: bool = True) -> CriticBase | 
 
 DEFAULT_LLM_BASE_URL = "https://llm-proxy.app.all-hands.dev/"
 
-# Environment variable names for LLM configuration
-ENV_LLM_API_KEY = "LLM_API_KEY"
-ENV_LLM_BASE_URL = "LLM_BASE_URL"
-ENV_LLM_MODEL = "LLM_MODEL"
-ENV_LLM_MAX_OUTPUT_TOKENS = "LLM_MAX_OUTPUT_TOKENS"
-
-
-class MissingEnvironmentVariablesError(Exception):
-    """Raised when required environment variables are missing for headless mode.
-
-    This exception is raised when --override-with-envs is enabled but required
-    environment variables (LLM_API_KEY and LLM_MODEL) are not set.
-    """
-
-    def __init__(self, missing_vars: list[str]) -> None:
-        self.missing_vars = missing_vars
-        vars_str = ", ".join(missing_vars)
-        super().__init__(
-            f"Missing required environment variable(s): {vars_str}\n"
-            f"When using --override-with-envs, you must set:\n"
-            f"  - {ENV_LLM_API_KEY}: Your LLM API key\n"
-            f"  - {ENV_LLM_MODEL}: The model to use (e.g., claude-sonnet-4-5-20250929)"
-        )
-
-
-def check_and_warn_env_vars() -> None:
-    """Check for LLM environment variables and warn if they are set but not used.
-
-    This function should be called when env overrides are disabled to inform
-    users that their environment variables are being ignored.
-    """
-    env_vars_set = []
-    if os.environ.get(ENV_LLM_API_KEY):
-        env_vars_set.append(ENV_LLM_API_KEY)
-    if os.environ.get(ENV_LLM_BASE_URL):
-        env_vars_set.append(ENV_LLM_BASE_URL)
-    if os.environ.get(ENV_LLM_MODEL):
-        env_vars_set.append(ENV_LLM_MODEL)
-
-    if env_vars_set:
-        console = Console(stderr=True)
-        vars_str = ", ".join(env_vars_set)
-        console.print(
-            f"[yellow]Warning:[/yellow] Environment variable(s) {vars_str} detected "
-            "but will be ignored.\n"
-            "Use [bold]--override-with-envs[/bold] flag to apply them.",
-            highlight=False,
-        )
-
-
-class LLMEnvOverrides(BaseModel):
-    """LLM configuration overrides from environment variables.
-
-    All fields are optional - only override the ones which are provided.
-    Environment variables take precedence over stored settings and are
-    NOT persisted to disk (temporary override only).
-
-    Use the `from_env()` class method to load values from environment
-    variables when env overrides are enabled.
-    """
-
-    api_key: SecretStr | None = None
-    base_url: str | None = None
-    model: str | None = None
-    max_output_tokens: int | None = None
-
-    @classmethod
-    def from_env(cls, enabled: bool = False) -> LLMEnvOverrides:
-        """Create LLMEnvOverrides from environment variables.
-
-        Args:
-            enabled: If True, load values from environment variables.
-                     If False, return empty overrides.
-
-        Returns:
-            LLMEnvOverrides instance with values from env vars (if enabled)
-            or empty overrides (if disabled).
-        """
-        if not enabled:
-            return cls()
-
-        result: dict[str, Any] = {}
-
-        api_key_str = os.environ.get(ENV_LLM_API_KEY) or None
-        if api_key_str:
-            result["api_key"] = SecretStr(api_key_str)
-
-        base_url = os.environ.get(ENV_LLM_BASE_URL) or None
-        if base_url:
-            result["base_url"] = base_url
-
-        model = os.environ.get(ENV_LLM_MODEL) or None
-        if model:
-            result["model"] = model
-
-        max_output_tokens_str = os.environ.get(ENV_LLM_MAX_OUTPUT_TOKENS) or None
-        if max_output_tokens_str:
-            try:
-                result["max_output_tokens"] = int(max_output_tokens_str)
-            except ValueError:
-                pass
-
-        return cls(**result)
-
-    def require_for_headless(self) -> None:
-        missing: list[str] = []
-        if self.api_key is None:
-            missing.append(ENV_LLM_API_KEY)
-        if self.model is None:
-            missing.append(ENV_LLM_MODEL)
-        if missing:
-            raise MissingEnvironmentVariablesError(missing)
-
-    def has_overrides(self) -> bool:
-        """Check if any overrides are set."""
-        return any([self.api_key, self.base_url, self.model, self.max_output_tokens])
-
-
-def apply_llm_overrides(llm: LLM, overrides: LLMEnvOverrides) -> LLM:
-    """Apply environment variable overrides to an LLM instance.
-
-    Args:
-        llm: The LLM instance to update
-        overrides: LLMEnvOverrides instance from get_env_llm_overrides()
-
-    Returns:
-        Updated LLM instance with overrides applied
-    """
-    if not overrides.has_overrides():
-        return llm
-
-    return llm.model_copy(update=overrides.model_dump(exclude_none=True))
-
 
 class AgentStore:
     """Single source of truth for persisting/retrieving AgentSpec."""
@@ -284,53 +148,13 @@ class AgentStore:
             )
             return None
 
-    def _ensure_agent(self, agent: Agent | None, overrides: LLMEnvOverrides) -> Agent:
-        if agent is not None:
-            return agent
-
-        # In env override mode, require enough info to create an agent.
-        overrides.require_for_headless()
-        assert overrides.api_key is not None
-        assert overrides.model is not None
-
-        llm = LLM(
-            model=overrides.model,
-            api_key=overrides.api_key.get_secret_value(),
-            base_url=overrides.base_url,
-            usage_id="agent",
-        )
-        return get_default_cli_agent(llm)
-
-    def _apply_env_overrides(self, agent: Agent, overrides: LLMEnvOverrides) -> Agent:
-        if not overrides.has_overrides():
-            return agent
-
-        updated_llm = apply_llm_overrides(agent.llm, overrides)
-
-        condenser = None
-        if agent.condenser and isinstance(agent.condenser, LLMSummarizingCondenser):
-            condenser = agent.condenser
-            updated_condenser_llm = apply_llm_overrides(condenser.llm, overrides)
-            condenser = condenser.model_copy(update={"llm": updated_condenser_llm})
-        return agent.model_copy(update={"llm": updated_llm, "condenser": condenser})
-
     def load_or_create(
         self,
         session_id: str | None = None,
         *,
-        env_overrides_enabled: bool = False,
         critic_disabled: bool = False,
     ) -> Agent | None:
         """Load an Agent and apply runtime configuration.
-
-        Invariant:
-        - If a persisted agent exists:
-            * Load it from disk.
-            * Apply any env overrides that are present (even partial).
-        - If no persisted agent exists:
-            * Require a full env spec (LLM_API_KEY + LLM_MODEL) to create
-                a default Agent.
-            * Otherwise, raise an error.
 
         Runtime configuration (tools, context, MCP, metadata, critic) is
         always applied last.
@@ -338,24 +162,13 @@ class AgentStore:
         Args:
             session_id: Optional session ID used for tool restoration and
                 LLM metadata tagging.
-            env_overrides_enabled: Whether env overrides are enabled.
             critic_disabled: If True, do not configure a critic.
 
         Returns:
-            A fully configured Agent, or None if no persisted agent exists and
-            env overrides are disabled.
-
-        Raises:
-            MissingEnvironmentVariablesError: If no persisted agent exists and
-                required env variables are missing.
+            A fully configured Agent, or None if no persisted agent exists.
         """
 
         agent = self.load_from_disk()
-        overrides = LLMEnvOverrides.from_env(enabled=env_overrides_enabled)
-
-        if env_overrides_enabled:
-            agent = self._ensure_agent(agent, overrides)
-            agent = self._apply_env_overrides(agent, overrides)
 
         if agent is None:
             return None

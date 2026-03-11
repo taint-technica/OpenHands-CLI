@@ -21,11 +21,6 @@ from openhands_cli.tui.modals.settings.settings_screen import SettingsScreen
 from openhands_cli.tui.textual_app import OpenHandsApp, main as textual_main
 
 
-# ---------------------------------------------------------------------------
-# Argument parsing / simple_main validation
-# ---------------------------------------------------------------------------
-
-
 class TestHeadlessArgumentParsing:
     """Minimal but high-impact coverage for headless arg parsing."""
 
@@ -79,29 +74,6 @@ class TestSimpleMainHeadlessValidation:
         mock_textual_main.assert_called_once()
         kwargs = mock_textual_main.call_args.kwargs
         assert kwargs.get("critic_disabled") is True
-
-    @patch("openhands_cli.tui.textual_app.main")
-    def test_headless_with_override_envs_passes_both_params(self, mock_textual_main):
-        """Test --headless --override-with-envs passes both params to textual_main."""
-        # Mock textual_main to return a UUID
-        mock_textual_main.return_value = uuid.uuid4()
-
-        test_args = [
-            "openhands",
-            "--headless",
-            "--override-with-envs",
-            "--task",
-            "test task",
-        ]
-
-        with patch.object(sys, "argv", test_args):
-            simple_main()
-
-        # Verify textual_main was called with both params set correctly
-        mock_textual_main.assert_called_once()
-        kwargs = mock_textual_main.call_args.kwargs
-        assert kwargs.get("critic_disabled") is True
-        assert kwargs.get("env_overrides_enabled") is True
 
     @patch("openhands_cli.tui.textual_app.main")
     def test_non_headless_passes_critic_disabled_false(self, mock_textual_main):
@@ -536,42 +508,3 @@ class TestJsonModeIntegration:
         # Should not raise an exception
         with patch("builtins.print"):
             json_callback(mock_event)
-
-
-class TestMissingEnvVarsErrorHandling:
-    """Tests for MissingEnvironmentVariablesError handling in entrypoint."""
-
-    def test_missing_env_vars_error_prints_message_and_exits(self, capsys) -> None:
-        """Test that MissingEnvironmentVariablesError prints message and exits."""
-        from openhands_cli.stores import MissingEnvironmentVariablesError
-
-        # Mock textual_main to raise MissingEnvironmentVariablesError
-        # (simulating what happens when the app runs and AgentStore.load() fails)
-        def raise_missing_env_vars(*args, **kwargs):
-            raise MissingEnvironmentVariablesError(["LLM_API_KEY", "LLM_MODEL"])
-
-        test_args = [
-            "openhands",
-            "--headless",
-            "--override-with-envs",
-            "--task",
-            "test",
-        ]
-
-        with (
-            patch.object(sys, "argv", test_args),
-            patch(
-                "openhands_cli.tui.textual_app.main", side_effect=raise_missing_env_vars
-            ),
-        ):
-            with pytest.raises(SystemExit) as exc_info:
-                simple_main()
-
-            # Should exit with code 1
-            assert exc_info.value.code == 1
-
-            # Check that the error message was printed
-            captured = capsys.readouterr()
-            assert "LLM_API_KEY" in captured.out
-            assert "LLM_MODEL" in captured.out
-            assert "Missing required environment variable(s)" in captured.out

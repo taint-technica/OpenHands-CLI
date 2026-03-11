@@ -46,7 +46,6 @@ def _get_project_path() -> str:
 
 
 class _LangfuseRestClient:
-
     def __init__(self, public_key: str, secret_key: str, host: str) -> None:
         from langfuse.api.client import FernLangfuse
 
@@ -59,7 +58,6 @@ class _LangfuseRestClient:
             max_workers=2, thread_name_prefix="langfuse-ingest"
         )
         logger.debug("Langfuse REST client ready (host=%s)", host)
-
 
     def create_trace(
         self,
@@ -183,7 +181,6 @@ class _LangfuseRestClient:
 
 
 class _SpanHandle:
-
     def __init__(self, client: _LangfuseRestClient, span_id: str) -> None:
         self._client = client
         self._id = span_id
@@ -207,7 +204,6 @@ class _SpanHandle:
 
 
 class _GenerationHandle:
-
     def __init__(self, client: _LangfuseRestClient, gen_id: str) -> None:
         self._client = client
         self._id = gen_id
@@ -255,7 +251,6 @@ def _get_rest_client() -> _LangfuseRestClient | None:
 
 
 class _LangfuseConversationTracer:
-
     def __init__(self, conversation_id: str, lf_client: _LangfuseRestClient) -> None:
         self._lf = lf_client
         self._conversation_id = conversation_id

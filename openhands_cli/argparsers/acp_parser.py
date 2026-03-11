@@ -3,7 +3,6 @@ import os
 
 from openhands_cli.argparsers.util import (
     add_confirmation_mode_args,
-    add_env_override_args,
     add_resume_args,
 )
 
@@ -24,9 +23,6 @@ def add_acp_parser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentP
     # ACP confirmation mode options (mutually exclusive)
     acp_confirmation_group = acp_parser.add_mutually_exclusive_group()
     add_confirmation_mode_args(acp_confirmation_group)
-
-    # Environment variable override option
-    add_env_override_args(acp_parser)
 
     acp_parser.add_argument(
         "--cloud",

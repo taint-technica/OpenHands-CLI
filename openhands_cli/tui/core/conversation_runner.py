@@ -51,7 +51,6 @@ class ConversationRunner:
         visualizer: ConversationVisualizer,
         event_callback: Callable[[Event], None] | None = None,
         *,
-        env_overrides_enabled: bool = False,
         critic_disabled: bool = False,
     ):
         """Initialize the conversation runner.
@@ -63,8 +62,6 @@ class ConversationRunner:
             notification_callback: Callback for notifications.
             visualizer: Visualizer for output display.
             event_callback: Optional callback for each event.
-            env_overrides_enabled: If True, environment variables will override
-                stored LLM settings.
             critic_disabled: If True, critic functionality will be disabled.
         """
         self.visualizer = visualizer
@@ -75,7 +72,6 @@ class ConversationRunner:
             confirmation_policy=state.confirmation_policy,
             visualizer=visualizer,
             event_callback=event_callback,
-            env_overrides_enabled=env_overrides_enabled,
             critic_disabled=critic_disabled,
         )
 
@@ -158,8 +154,6 @@ class ConversationRunner:
                     self.conversation.reject_pending_actions(
                         "User rejected the actions"
                     )
-                elif decision == UserConfirmation.DEFER:
-                    self.conversation.pause()
                     return
                 # ACCEPT and policy changes just continue running
 

@@ -10,6 +10,7 @@ from openhands_cli.instructions.utgen.scripts.python_template import (
     PYTHON_SCRIPT_TEMPLATE,
 )
 
+
 __all__ = [
     "PYTHON_SCRIPT_TEMPLATE",
     "JAVA_SCRIPT_TEMPLATE",

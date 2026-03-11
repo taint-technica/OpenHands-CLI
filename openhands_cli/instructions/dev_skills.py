@@ -15,17 +15,18 @@ The CLI will automatically scan and load user skills at runtime.
 
 from openhands.sdk.context import Skill
 from openhands.sdk.context.skills.trigger import KeywordTrigger
-
 from openhands_cli.instructions.utgen import (
     CLI_ARGUMENTS,
     ERROR_HANDLING_GUIDE,
-    PYTHON_SCRIPT_TEMPLATE,
-    PYTHON_WORKFLOW,
-    KEPLOY_KEYWORDS,
+    GEN_SCRIPT_FILE,
+    JAVA_REFACTOR_GUIDE,
     JAVA_SCRIPT_TEMPLATE,
     JAVA_WORKFLOW,
-    GEN_SCRIPT_FILE,
+    KEPLOY_KEYWORDS,
     OVERALL_WORKFLOW,
+    PYTHON_REFACTOR_GUIDE,
+    PYTHON_SCRIPT_TEMPLATE,
+    PYTHON_WORKFLOW,
 )
 
 
@@ -292,6 +293,16 @@ Save as `run_keploy_gen_java.sh`:
 ## Workflow Steps
 
 {OVERALL_WORKFLOW}
+
+## Refactoring Guidelines
+
+### Python Projects
+
+{PYTHON_REFACTOR_GUIDE}
+
+### Java Projects
+
+{JAVA_REFACTOR_GUIDE}
 
 {ERROR_HANDLING_GUIDE}
 """,

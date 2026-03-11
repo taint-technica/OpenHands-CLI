@@ -13,22 +13,26 @@ All content is compiled and protected by Nuitka.
 from openhands_cli.instructions.utgen.constants import (
     CLI_ARGUMENTS,
     DEFAULTS,
+    GEN_SCRIPT_FILE,
     JAVA_DEFAULTS,
     KEPLOY_KEYWORDS,
     PYTHON_DEFAULTS,
-    GEN_SCRIPT_FILE,
 )
-
 from openhands_cli.instructions.utgen.error_handling import ERROR_HANDLING_GUIDE
+from openhands_cli.instructions.utgen.refactor_guides import (
+    JAVA_REFACTOR_GUIDE,
+    PYTHON_REFACTOR_GUIDE,
+)
 from openhands_cli.instructions.utgen.scripts.java_template import JAVA_SCRIPT_TEMPLATE
 from openhands_cli.instructions.utgen.scripts.python_template import (
     PYTHON_SCRIPT_TEMPLATE,
 )
 from openhands_cli.instructions.utgen.workflows import (
     JAVA_WORKFLOW,
-    PYTHON_WORKFLOW,
     OVERALL_WORKFLOW,
+    PYTHON_WORKFLOW,
 )
+
 
 __all__ = [
     # Constants
@@ -45,6 +49,9 @@ __all__ = [
     "PYTHON_WORKFLOW",
     "JAVA_WORKFLOW",
     "OVERALL_WORKFLOW",
+    # Refactor
+    "PYTHON_REFACTOR_GUIDE",
+    "JAVA_REFACTOR_GUIDE",
     # Error handling
     "ERROR_HANDLING_GUIDE",
 ]

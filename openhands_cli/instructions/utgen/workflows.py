@@ -10,20 +10,9 @@ PYTHON_WORKFLOW = """
 1. **Check and install uv:**
     ```bash
     if ! command -v uv &> /dev/null; then
-        echo "uv is NOT installed. Installing..."
         curl -LsSf https://astral.sh/uv/install.sh | sh
-
         [ -f "$HOME/.local/bin/env" ] && source "$HOME/.local/bin/env"
         [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
-
-        if command -v uv &> /dev/null; then
-            echo "SUCCESS: uv installed"
-        else
-            echo "ERROR: Installation failed"
-            exit 1
-        fi
-    else
-        echo "uv is already installed: $(uv --version)"
     fi
     ```
 
@@ -37,7 +26,6 @@ PYTHON_WORKFLOW = """
     fi
     uv sync
     uv add pip pytest pytest-asyncio coverage
-    
     export API_KEY="dummy"
     ```
 
@@ -49,110 +37,85 @@ PYTHON_WORKFLOW = """
     ```bash
    uv run coverage run --include=<source_file> -m pytest <test_file> && uv run coverage xml
    ```
-
-5. **Configuration other augments**
-   
-6. **Create/Update Gen_UnitTest.sh:**
-    ```bash
-    if [ -f "Gen_UnitTest.sh" ]; then
-       echo "Updating existing Gen_UnitTest.sh..."
-    else
-        echo "Creating new Gen_UnitTest.sh..."
-    fi
-
-    cat > Gen_UnitTest.sh << 'EOF'
-    #!/bin/bash
-        //Keploy gen command here
-    EOF
-
-    chmod +x Gen_UnitTest.sh
-    ```
-
-7. **Excute keploy gen command**
-
-8. **Refactor Generated Tests (REQUIRED):**
 """
 
 JAVA_WORKFLOW = """
-### Java Project Setup (Maven)
+### Java Project Setup
 
-1. **Environment Setup:**
-    ```bash
-    export API_KEY="dummy"
-    //Auto-detect JAVA_HOME or set manually
-    export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-    export PATH=/usr/bin:/usr/local/bin:$PATH
-    ```
+#### Detect Build Tool & Fill Placeholders
 
-2. **Coverage Configuration:**
-    - `--coverageReportPath="target/site/jacoco/jacoco.xml"`
-    - `--coverageFormat="jacoco"`
+Read the project to determine the build tool, then fill in the script template placeholders accordingly:
 
-3. **Maven Coverage Setup:**
-   Ensure jacoco-maven-plugin in `pom.xml` under `<profile id="coverage">`:
-   ```xml
-   <profile>
-       <id>coverage</id>
-       <dependencies>
-           <dependency>
-               <groupId>org.jacoco</groupId>
-               <artifactId>jacoco-maven-plugin</artifactId>
-               <version>0.8.11</version>
-           </dependency>
-       </dependencies>
-   </profile>
-   ```
+**`{{JAVA_HOME}}`** — detect Java version from project config:
+- Maven: check `<java.version>` or `<maven.compiler.source>` in `pom.xml`
+- Gradle: check `sourceCompatibility` / `javaVersion` in `build.gradle`
+- Map version to path: `11` → `/usr/lib/jvm/java-11-openjdk-amd64`, `17` → `/usr/lib/jvm/java-17-openjdk-amd64`, `21` → `/usr/lib/jvm/java-21-openjdk-amd64`
+- If unspecified, default to `/usr/lib/jvm/java-21-openjdk-amd64`
 
-4. **Test Command Pattern:**
-   ```bash
-   mvn verify -P coverage -Dtest=<TestClassname>
-   ```
+**`{{BUILD_CLEAN_COMMAND}}`** — based on build file present:
+| Build file | Command |
+|---|---|
+| `pom.xml` | `mvn clean` |
+| `gradlew` + `build.gradle` | `chmod +x ./gradlew && ./gradlew clean` |
+| `build.gradle` (no wrapper) | `gradle clean` |
 
-5. **Configuration other augments**
-   
-6. **Create/Update Gen_UnitTest.sh:**
-    ```bash
-    if [ -f "Gen_UnitTest.sh" ]; then
-       echo "Updating existing Gen_UnitTest.sh..."
-    else
-        echo "Creating new Gen_UnitTest.sh..."
-    fi
+**`{{COVERAGE_REPORT_PATH}}`** — based on build tool:
+| Build tool | Path |
+|---|---|
+| Maven | `target/site/jacoco/jacoco.xml` |
+| Gradle | `build/reports/jacoco/test/jacocoTestReport.xml` |
 
-    cat > Gen_UnitTest.sh << 'EOF'
-    #!/bin/bash
-        //Keploy gen command here
-    EOF
+#### Coverage Plugin Setup
 
-    chmod +x Gen_UnitTest.sh
-    ```
+**Maven** — ensure jacoco-maven-plugin in `pom.xml` under `<profile id="coverage">`:
+```xml
+<profile>
+    <id>coverage</id>
+    <dependencies>
+        <dependency>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>0.8.11</version>
+        </dependency>
+    </dependencies>
+</profile>
+```
 
-7. **Excute keploy gen command**
+**Gradle** — ensure jacoco plugin in `build.gradle`:
+```groovy
+plugins {
+    id 'jacoco'
+}
+jacocoTestReport {
+    reports { xml.required = true }
+}
+```
 
-8. **Refactor Generated Tests (REQUIRED):**
+#### Test Command Pattern
+
+**Maven:**
+```bash
+mvn verify -P coverage -Dtest=<TestClassname>
+```
+
+**Gradle:**
+```bash
+./gradlew test jacocoTestReport --tests "<package.TestClassname>"
+```
 """
 
 OVERALL_WORKFLOW = """
 ### Step 1: Extract User Requirements
-From user input, extract:
-- Source file path to test
-- Expected coverage
-- Max iterations
-- Model
-- Function under test (optional)
-- Flakiness check (optional)
+From user input, extract: source file path, expected coverage, max iterations, model, function under test (optional), flakiness check (optional).
 
 ### Step 2: Check architect.md
-- Check if `architect.md` exists in the project root
-- If not exists, use slash command `/analysis_architect_and_framework` to generate it
+- If `architect.md` doesn't exist, use `/analysis_architect_and_framework` to generate it
 - Include architect.md content in `--additional-prompt` argument
 
 ### Step 3: Check/Create Test File
-- Test file location follows source file structure but in test directory
-- Python example: `src/service/file.py` → `tests/service/test_file.py`
-- Java example: `src/main/java/com/example/Service.java` → `src/test/java/com/example/ServiceTest.java`
-- If test file doesn't exist, create it as an **EMPTY FILE** (do NOT add any placeholder content)
-- Use `touch <test_file_path>` to create empty file, or `> <test_file_path>` to overwrite with empty content
-- **IMPORTANT:** Do NOT add class definitions, imports, or any placeholder text - Keploy will generate the content
+- Python: `src/service/file.py` → `tests/service/test_file.py`
+- Java: `src/main/java/com/example/Service.java` → `src/test/java/com/example/ServiceTest.java`
+- If test file doesn't exist, create as **empty file** (`touch <path>`) — do NOT add placeholder content
 
 ### Step 4: Detect Project Type
 - **Python**: Look for `pyproject.toml`, `setup.py`, `requirements.txt`, or `.py` files
@@ -164,13 +127,12 @@ From user input, extract:
 - **Java (Gradle)**: Ensure jacoco plugin in build.gradle
 
 ### Step 6: Create/Update Gen_UnitTest.sh Script
-- Check if `Gen_UnitTest.sh` exists in project root
-- If NOT exists: Create new file with Keploy gen command
-- If exists: Update/overwrite with new command (do NOT create duplicate)
-- Make script executable: `chmod +x Gen_UnitTest.sh`
+- **ALWAYS** use `Gen_UnitTest.sh` as the script filename
+- If NOT exists → create it; if exists → update/overwrite (do NOT create duplicates like Gen_UnitTest_1.sh)
+- Make executable: `chmod +x Gen_UnitTest.sh`
 
 ### Step 7: Build Keploy Command
-Construct the keploy gen command in file Gen_UnitTest.sh with:
+Construct the keploy gen command in Gen_UnitTest.sh with:
 - Project-appropriate paths and test command
 - Correct coverage format (cobertura for Python, jacoco for Java)
 - architect.md content in additional-prompt
@@ -178,30 +140,15 @@ Construct the keploy gen command in file Gen_UnitTest.sh with:
 
 ### Step 8: Execute and Monitor
 - Display full command before execution
-- Show real-time logs during execution
-- If errors occur, display complete error logs
-- Provide clear error messages and suggestions
+- Show real-time logs and complete error output
 
 ### Step 9: Refactor Generated Tests (REQUIRED)
-NOT ADD ANY TEST CASE after Keploy generates tests, ONLY refactor the test file to ensure clean, maintainable code
+After Keploy generates tests, ONLY refactor — do NOT add new test cases.
 
-**CRITICAL: REFACTOR ONLY - DO NOT ADD NEW TESTS**
-**IMPORTANT:**
-- **ONLY** refactor existing tests generated by Keploy
-- **DO NOT** create new test cases
-- **DO NOT** delete existing tests (unless duplicate)
-- **KEEP** the same number of test cases
-**WHAT NOT TO DO:**
-- Do NOT write new test cases
-- Do NOT add additional test scenarios
-- Do NOT increase test coverage manually
-- Do NOT change test logic or assertions
-- Do NOT delete existing tests (unless duplicate)
-**WHAT TO DO:**
-- Clean up existing test code
-- Improve naming conventions
-- Apply AAA pattern
-- Add proper mocking
-- Remove code smells
-- Fix imports and formatting
+### Troubleshooting
+- **Coverage not generated**: Verify test command, check coverage package installed, run tests manually
+- **Test file not found**: Create empty test file before running keploy gen, follow naming conventions
+- **Low coverage after max iterations**: Review tests manually, increase max iterations, add guidance via `--additional-prompt`
+- **Java**: Always run `mvn clean` before keploy gen
+- Replace all `{{PLACEHOLDER}}` values with actual values; escape double quotes and newlines in ADDITIONAL_PROMPT
 """

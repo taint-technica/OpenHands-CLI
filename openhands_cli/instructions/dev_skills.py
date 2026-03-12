@@ -17,8 +17,6 @@ from openhands.sdk.context import Skill
 from openhands.sdk.context.skills.trigger import KeywordTrigger
 from openhands_cli.instructions.utgen import (
     CLI_ARGUMENTS,
-    ERROR_HANDLING_GUIDE,
-    GEN_SCRIPT_FILE,
     JAVA_REFACTOR_GUIDE,
     JAVA_SCRIPT_TEMPLATE,
     JAVA_WORKFLOW,
@@ -268,21 +266,13 @@ You are an expert in generating unit tests using Keploy AI-powered tool on Ubunt
 
 ## Script Templates
 
-### Python Project Script Template
-
-Save as `run_keploy_gen_python.sh`:
+### Python Project Script Template (Gen_UnitTest.sh)
 
 {PYTHON_SCRIPT_TEMPLATE}
 
-### Java Project Script Template
-
-Save as `run_keploy_gen_java.sh`:
+### Java Project Script Template (Gen_UnitTest.sh)
 
 {JAVA_SCRIPT_TEMPLATE}
-
-## Core Principle: Single Script File
-
-{GEN_SCRIPT_FILE}
 
 ## Project Setup
 
@@ -303,8 +293,6 @@ Save as `run_keploy_gen_java.sh`:
 ### Java Projects
 
 {JAVA_REFACTOR_GUIDE}
-
-{ERROR_HANDLING_GUIDE}
 """,
     trigger=KeywordTrigger(
         type="keyword",

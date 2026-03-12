@@ -8,38 +8,34 @@ All content is compiled and protected by Nuitka.
 JAVA_SCRIPT_TEMPLATE = """\
 #!/bin/bash
 
-# ============================================================================
-# Keploy Gen Script for Java Projects
-# Fill in the placeholders below before running
-# ============================================================================
-
-# --- PLACEHOLDERS TO FILL ---
-SOURCE_FILE_PATH="{{SOURCE_FILE_PATH}}"           # e.g., "src/main/java/com/example/service/MyService.java"
-TEST_FILE_PATH="{{TEST_FILE_PATH}}"               # e.g., "src/test/java/com/example/service/MyServiceTest.java"
-COVERAGE_REPORT_PATH="${{COVERAGE_REPORT_PATH:-target/site/jacoco/jacoco.xml}}"
+SOURCE_FILE_PATH="{{SOURCE_FILE_PATH}}"
+TEST_FILE_PATH="{{TEST_FILE_PATH}}"
+COVERAGE_REPORT_PATH="{{COVERAGE_REPORT_PATH}}"
 COVERAGE_FORMAT="${{COVERAGE_FORMAT:-jacoco}}"
-TEST_COMMAND="{{TEST_COMMAND}}"                   # e.g., "mvn verify -P coverage -Dtest=MyServiceTest"
+TEST_COMMAND="{{TEST_COMMAND}}"
 EXPECTED_COVERAGE="${{EXPECTED_COVERAGE:-85}}"
 MAX_ITERATIONS="${{MAX_ITERATIONS:-5}}"
 LLM_BASE_URL="${{LLM_BASE_URL:-http://0.0.0.0:4000}}"
 MODEL="${{MODEL:-claude-haiku-4-5}}"
 LLM_API_VERSION="${{LLM_API_VERSION:-}}"
-ADDITIONAL_PROMPT="{{ADDITIONAL_PROMPT}}"
 FUNCTION_UNDER_TEST="${{FUNCTION_UNDER_TEST:-}}"
 FLAKINESS="${{FLAKINESS:-false}}"
 SERVER_URL="${{SERVER_URL:-}}"
-# ----------------------------
+JAVA_HOME="{{JAVA_HOME}}"
+BUILD_CLEAN_COMMAND="{{BUILD_CLEAN_COMMAND}}"
 
-# Set environment variables
+# Load architect.md if exists, combine with user prompt
+ADDITIONAL_PROMPT=""
+[ -f "architect.md" ] && ADDITIONAL_PROMPT="$(cat architect.md)"
+USER_PROMPT="{{ADDITIONAL_PROMPT}}"
+[ -n "$USER_PROMPT" ] && ADDITIONAL_PROMPT="${{ADDITIONAL_PROMPT:+$ADDITIONAL_PROMPT\\n}}$USER_PROMPT"
+
 export API_KEY="dummy"
-export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-amd64}"
+export JAVA_HOME
 export PATH="/usr/bin:/usr/local/bin:$PATH"
 
-# Clean Maven build
-echo "Running mvn clean..."
-mvn clean
+$BUILD_CLEAN_COMMAND
 
-# Build the keploy gen command
 KEPLOY_CMD="keploy gen"
 KEPLOY_CMD+=" --sourceFilePath=\\"$SOURCE_FILE_PATH\\""
 KEPLOY_CMD+=" --testFilePath=\\"$TEST_FILE_PATH\\""
@@ -57,27 +53,6 @@ KEPLOY_CMD+=" --model=\\"$MODEL\\""
 [ "$FLAKINESS" = "true" ] && KEPLOY_CMD+=" --flakiness"
 [ -n "$SERVER_URL" ] && KEPLOY_CMD+=" --server-url=\\"$SERVER_URL\\""
 
-# Display the command
-echo "=========================================="
-echo "Keploy Gen - Java Project"
-echo "=========================================="
-echo "Command: $KEPLOY_CMD"
-echo "=========================================="
-
-# Execute the command
 eval $KEPLOY_CMD
-
-# Capture exit code
-EXIT_CODE=$?
-
-if [ $EXIT_CODE -ne 0 ]; then
-    echo "=========================================="
-    echo "ERROR: Keploy gen failed with exit code $EXIT_CODE"
-    echo "=========================================="
-    exit $EXIT_CODE
-else
-    echo "=========================================="
-    echo "SUCCESS: Keploy gen completed successfully"
-    echo "=========================================="
-fi
+exit $?
 """

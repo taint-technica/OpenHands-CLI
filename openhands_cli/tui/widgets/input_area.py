@@ -92,6 +92,8 @@ class InputAreaContainer(Container):
                 self._command_feedback()
             case "exit":
                 self._command_exit()
+            case "code_tree":
+                self._command_code_tree()
             case "analysis_architect_and_framework":
                 # Send to agent for processing (not handled by TUI)
                 self._command_send_to_agent(event.command)
@@ -184,6 +186,11 @@ class InputAreaContainer(Container):
             app.push_screen(ExitConfirmationModal())
         else:
             app.exit()
+
+    def _command_code_tree(self) -> None:
+        """Handle the /code_tree command to toggle the code tree panel."""
+        app = cast("OpenHandsApp", self.app)
+        app.action_toggle_code_tree()
 
     def _command_send_to_agent(self, command: str) -> None:
         """Send a command to the agent for processing.

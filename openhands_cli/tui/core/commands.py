@@ -25,6 +25,7 @@ COMMANDS = [
     DropdownItem(main="/skills - View loaded skills, hooks, and MCPs"),
     DropdownItem(main="/feedback - Send anonymous feedback about CLI"),
     DropdownItem(main="/exit - Exit the application"),
+    DropdownItem(main="/code_tree - Toggle project code tree panel"),
     DropdownItem(
         main="/analysis_architect_and_framework - Analyze code architecture and framework structure"
     ),
@@ -83,12 +84,15 @@ def show_help(scroll_view: VerticalScroll) -> None:
   [{secondary}]/skills[/{secondary}] - View loaded skills, hooks, and MCPs
   [{secondary}]/feedback[/{secondary}] - Send anonymous feedback about CLI
   [{secondary}]/exit[/{secondary}] - Exit the application
+  [{secondary}]/code_tree[/{secondary}] - Toggle project code tree panel
   [{secondary}]/analysis_architect_and_framework[/{secondary}] - Analyze code architecture and framework structure
 
 [dim]Tips:[/dim]
   • Type / and press Tab to see command suggestions
   • Use arrow keys to navigate through suggestions
   • Press Enter to select a command
+  • Use Ctrl+T to quickly toggle code tree panel
+  • In code tree panel: arrow keys to navigate, Enter to mention file
 """
     help_widget = Static(help_text, classes="help-message")
     scroll_view.mount(help_widget)

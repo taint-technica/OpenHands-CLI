@@ -259,10 +259,7 @@ def handle_analysis_architect_and_framework(
 
     target = argument.strip()
     skill_content = ANALYSIS_ARCHITECT_AND_FRAMEWORK.content
-    return (
-        f"Analysis target: {target}\n\n"
-        f"{skill_content}"
-    )
+    return f"Analysis target: {target}\n\n{skill_content}"
 
 
 def get_unknown_command_text(command: str) -> str:

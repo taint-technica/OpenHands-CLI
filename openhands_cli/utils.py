@@ -147,6 +147,7 @@ def get_llm_metadata(
         pass
 
     metadata = {
+        "trace_name": f"openhands-cli/{llm_type}",
         "trace_version": openhands_sdk_version,
         "tags": [
             "app:openhands-cli",

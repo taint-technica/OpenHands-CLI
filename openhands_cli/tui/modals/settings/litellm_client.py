@@ -1,8 +1,10 @@
 """LiteLLM Proxy client for OpenHands-CLI settings."""
 
-import httpx
 import logging
 from typing import Any
+
+import httpx
+
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,7 @@ class LiteLLMProxyClient:
         """
         url = f"{self.base_url}/v1/models"
         headers = {}
-        
+
         # Always send API key if available for authentication
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
@@ -47,19 +49,19 @@ class LiteLLMProxyClient:
         try:
             response = await self._client.get(url, headers=headers)
             response.raise_for_status()
-            
+
             data = response.json()
             models = data.get("data", [])
-            
+
             # Extract model names (aliases from model_name in config)
             model_names = [model.get("id", "") for model in models]
-            
+
             # Filter out empty strings
             model_names = [name for name in model_names if name]
-            
+
             logger.debug(f"Fetched {len(model_names)} models from LiteLLM Proxy")
             return sorted(model_names)
-            
+
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error fetching models: {e.response.status_code}")
             raise
@@ -84,17 +86,17 @@ class LiteLLMProxyClient:
             }
         """
         url = f"{self.base_url}/health/liveliness"
-        
+
         try:
             response = await self._client.get(url)
             response.raise_for_status()
-            
+
             return {
                 "success": True,
                 "status": "connected",
                 "proxy_url": self.base_url,
             }
-            
+
         except httpx.HTTPStatusError as e:
             return {
                 "success": False,
@@ -108,8 +110,7 @@ class LiteLLMProxyClient:
 
 
 async def fetch_available_models(
-    proxy_url: str,
-    api_key: str | None = None
+    proxy_url: str, api_key: str | None = None
 ) -> list[str]:
     """Convenience function to fetch available models.
 

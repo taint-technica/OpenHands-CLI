@@ -12,6 +12,7 @@ from openhands.sdk.security.confirmation_policy import (
 )
 from openhands.sdk.security.llm_analyzer import LLMSecurityAnalyzer
 from openhands_cli.acp_impl.confirmation import CONFIRMATION_MODES, ConfirmationMode
+from openhands_cli.instructions.dev_skills import ANALYSIS_ARCHITECT_AND_FRAMEWORK
 from openhands_cli.shared.slash_commands import (
     parse_slash_command as parse_slash_command,
 )
@@ -236,7 +237,9 @@ def handle_analysis_architect_and_framework(
     """Handle /analysis_architect_and_framework command and return response.
 
     This command activates the Analysis Architect & Framework skill to analyze
-    code architecture and framework structure.
+    code architecture and framework structure. The instruction content comes from
+    the hardcoded ANALYSIS_ARCHITECT_AND_FRAMEWORK skill in dev_skills.py
+    (protected by Nuitka compilation).
 
     Args:
         argument: Command argument (file path, folder path, module name, etc.)
@@ -246,36 +249,19 @@ def handle_analysis_architect_and_framework(
     """
     if not argument or not argument.strip():
         return (
-            "Analysis Architect & Framework\n\n"
-            "This tool helps analyze software architecture and framework structures.\n\n"
             "Usage: /analysis_architect_and_framework <target>\n\n"
             "Examples:\n"
             "  /analysis_architect_and_framework src/main.py\n"
             "  /analysis_architect_and_framework ./services/user_service\n"
             "  /analysis_architect_and_framework auth_module\n\n"
-            "Supported analysis levels:\n"
-            "  - Single File: Analyze structure of a single code file\n"
-            "  - Multi Files: Analyze relationships between multiple files\n"
-            "  - Module: Analyze complete functional modules\n"
-            "  - Service: Analyze service-oriented architecture components\n"
-            "  - Router: Analyze routing and request handling patterns\n"
-            "  - Domain: Analyze domain-driven design implementation\n\n"
             "Please specify a file, folder, module, or service to analyze."
         )
 
-    # Return a message indicating the analysis will be performed
     target = argument.strip()
+    skill_content = ANALYSIS_ARCHITECT_AND_FRAMEWORK.content
     return (
-        f"Starting Architecture Analysis for: {target}\n\n"
-        "I will analyze the code structure, dependencies, design patterns, "
-        "and architectural decisions. This includes:\n\n"
-        "1. **Structure Analysis**: Understanding code organization and responsibilities\n"
-        "2. **Dependency Mapping**: Identifying imports, dependencies, and interactions\n"
-        "3. **Pattern Detection**: Recognizing design patterns and architectural styles\n"
-        "4. **Framework Analysis**: Examining framework-specific configurations and patterns\n"
-        "5. **Documentation**: Generating architecture documentation and recommendations\n\n"
-        f"Analyzing target: {target}\n\n"
-        "Please wait while I examine the codebase..."
+        f"Analysis target: {target}\n\n"
+        f"{skill_content}"
     )
 
 

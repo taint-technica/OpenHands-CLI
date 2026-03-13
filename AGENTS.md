@@ -49,88 +49,59 @@ uv run openhands
 
 ---
 
-### 3. **Langfuse Integration**
+### 3. **Langfuse Integration (via LiteLLM Proxy)**
+
+**Architecture:**
+```
+OpenHands CLI → LiteLLM Proxy (:4000) → Langfuse Callback → Langfuse Web (:3000)
+                       ↓
+                 LLM Provider (Anthropic, OpenAI, etc.)
+```
+
+Langfuse tracing is handled **server-side** by LiteLLM Proxy callbacks. The proxy sends traces to Langfuse using `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` (project-level API keys created in Langfuse UI).
+
+**Metadata for Local Proxy:**
+
+`openhands_cli/utils.py` → `should_set_litellm_extra_body()` controls whether metadata (component, session, tags) is sent to the proxy. By default it only sends metadata for `openhands/` models or cloud proxy URLs. For local LiteLLM proxy, set:
+
+```bash
+# In .env
+OPENHANDS_SEND_LLM_METADATA=true
+```
+
+This makes OpenHands send rich metadata (tags like `app:openhands-cli`, `model:...`, `session_id`, `trace_user_id`) to the local proxy, which Langfuse then displays in traces.
 
 **Files:**
+- `openhands_cli/utils.py` - `should_set_litellm_extra_body()` + `get_llm_metadata()` — metadata generation + env var opt-in
 - `openhands_cli/stores/langfuse_store.py` - Config storage
 - `openhands_cli/stores/agent_store.py` - Enable callback
 - `openhands_cli/tui/modals/settings/langfuse_config.py` - Settings UI
 
-**Config:**
-- Server: `http://localhost:3000` (self-hosted v2.95.11)
-- SDK: `langfuse==2.50.0` (downgraded từ 3.x để compatible với LiteLLM)
-- UI: Settings → "📊 Langfuse Tracing" button
-
-**Status:** ✅ Working - Traces xuất hiện trong Langfuse UI
-
-**Security:** ✅ Skill content KHÔNG bị leak vào Langfuse
-
-**Architecture:**
-```
-OpenHands CLI → LiteLLM → Langfuse Callback → Local Langfuse Server
-                     ↓
-               LLM Provider (OpenAI, Anthropic, etc.)
-```
-
 **Setup Steps:**
 
-1. **Start Langfuse Server:**
-   ```bash
-   docker-compose up -d langfuse-web langfuse-worker
+1. **Start services:** `docker compose up -d` (from project root)
+2. **Access Langfuse UI:** http://localhost:3000
+3. **Get API Keys:** Settings → API Keys → Copy Public & Secret Key
+4. **Set in `.env`:**
    ```
-
-2. **Access Langfuse UI:**
+   LANGFUSE_PUBLIC_KEY=pk-lf-...
+   LANGFUSE_SECRET_KEY=sk-lf-...
+   OPENHANDS_SEND_LLM_METADATA=true
    ```
-   http://localhost:3000
-   Default credentials: Check docker-compose.env or set via env vars
-   ```
-
-3. **Get API Keys:**
-   - Go to Settings → API Keys
-   - Create new project or use default
-   - Copy Public Key & Secret Key
-
-4. **Configure in OpenHands CLI:**
-   - Run: `uv run openhands`
-   - Open Settings (gear icon)
-   - Click "📊 Langfuse Tracing"
-   - Enter credentials
-   - Click "Test Connection"
-   - Click "Save"
-
-5. **Verify Tracing:**
-   - Chat with agent: "Write a hello world function"
-   - Check Langfuse UI: Trace should appear within seconds
-
-**Implementation Details:**
-```python
-# When Langfuse is enabled:
-import litellm
-
-# Set environment variables
-os.environ["LANGFUSE_HOST"] = "http://localhost:3000"
-os.environ["LANGFUSE_PUBLIC_KEY"] = "pk-lf-..."
-os.environ["LANGFUSE_SECRET_KEY"] = "sk-lf-..."
-
-# Enable callbacks
-litellm.success_callback = ["langfuse"]
-litellm.failure_callback = ["langfuse"]
-
-# All subsequent LLM calls are automatically traced
-```
+5. **Verify:** Chat with agent, then check Langfuse Traces — should show metadata tags
 
 **Troubleshooting:**
 
 | Issue | Solution |
 |-------|----------|
-| Connection failed | Check Langfuse server: `docker-compose ps` |
-| No traces appearing | Verify API keys are correct in Langfuse UI |
-| High latency | Check network to Langfuse server; consider async mode |
+| No traces in Langfuse | Check `docker compose logs litellm-proxy \| grep langfuse` |
+| Traces but no metadata | Verify `OPENHANDS_SEND_LLM_METADATA=true` in `.env` |
+| Connection failed | Verify `langfuse-web` is on both Docker networks (default + unit-test-agent-network) |
 | Missing cost data | Ensure model name matches Langfuse pricing database |
 
 **Privacy & Security:**
 - ✅ Data stays local (self-hosted Langfuse)
-- ✅ API keys stored encrypted in config file
+- ✅ API keys stored on proxy only, not on clients
 - ✅ No data sent to external services
 - ⚠️ LLM content still sent to Langfuse (tracing includes prompts/responses)
 

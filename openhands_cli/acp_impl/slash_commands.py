@@ -63,6 +63,15 @@ def get_available_slash_commands() -> list[AvailableCommand]:
             ),
         ),
         AvailableCommand(
+            name="code_analysis",
+            description="Analyze code for unit test friendliness",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(
+                    hint="File path | Folder path | Module name (optional)",
+                ),
+            ),
+        ),
+        AvailableCommand(
             name="configure_sonar_scanner",
             description="Create a Sonar Scanner configuration file",
             input=AvailableCommandInput(
@@ -258,6 +267,94 @@ def handle_confirm_argument(
 
     # Return success message with the new mode
     return get_confirm_success_text(mode), mode
+
+
+CODE_ANALYSIS_SKILL_CONTENT = """
+You are an expert software engineer specializing in testable code design and TDD.
+
+Analyze the following code and evaluate how "unit test friendly" it is.
+
+## Evaluation Criteria
+
+Check for these properties and flag issues:
+
+**1. Single Responsibility**
+- Does each function/class do ONE thing?
+- Are there functions that mix business logic with I/O, logging, or side effects?
+
+**2. Dependency Injection**
+- Are dependencies (DB, HTTP clients, services) injected rather than hardcoded?
+- Are there hidden dependencies (globals, singletons, static calls)?
+
+**3. Pure Functions**
+- Do functions return predictable outputs for the same inputs?
+- Do functions have hidden side effects (mutating globals, writing files, etc.)?
+
+**4. Seams & Interfaces**
+- Are there clear boundaries where mocks/stubs can be inserted?
+- Are concrete classes used instead of interfaces/abstractions?
+
+**5. Testable State**
+- Is internal state accessible or observable for assertions?
+- Are functions too deeply nested to test individual units?
+
+**6. Avoid Hard Dependencies**
+- new Date(), Math.random(), file system, network calls inside logic?
+- Environment variables read directly inside functions?
+
+**7. Function Size & Complexity**
+- Are functions small and focused (< ~20 lines)?
+- Is cyclomatic complexity high (many branches/conditions)?
+
+## Output Format
+
+**1. Overall Score**:
+- X/10 (unit test friendliness)
+
+**2. Summary**:
+- 2-3 sentence overview
+
+**3. Issues Found**:
+List each problem with:
+- Location (function/class name)
+- Problem description
+- Severity: High | Medium | Low
+
+**4. Refactored Example**:
+- Show a corrected version of the worst offender
+
+**5. Quick Wins**:
+- Top 3 changes that would most improve testability
+
+## Code to Analyze:
+
+`Entire project`
+"""
+
+CODE_ANALYSIS_ASK_TARGET_INSTRUCTION = (
+    "IMPORTANT: Do NOT analyze any code yet. Do NOT explore or read the project.\n\n"
+    "The user activated the /code_analysis command but didn't specify a target.\n\n"
+    "Your ONLY task right now is to ask the user which specific file, folder, or module "
+    "they want to analyze for unit test friendliness.\n\n"
+    "Provide these examples:\n"
+    "  - A specific file: src/services/auth.py\n"
+    "  - A folder: src/services/\n"
+    "  - A module or class name: AuthService\n\n"
+    "Wait for the user's response. Do NOT proceed until they provide a target or say they want to cancel."
+)
+
+
+def code_analysis(argument: str) -> str | None:
+    """Handle /code_analysis command.
+
+    Returns:
+        Analysis instruction string if target is provided,
+        None if no target (caller should redirect to conversation flow).
+    """
+    target = argument.strip()
+    if not target:
+        return None
+    return f"Analysis target: {target}\n\n{CODE_ANALYSIS_SKILL_CONTENT}"
 
 
 def handle_analysis_architect_and_framework(

@@ -13,6 +13,7 @@ from openhands.sdk.security.confirmation_policy import (
 from openhands.sdk.security.llm_analyzer import LLMSecurityAnalyzer
 from openhands_cli.acp_impl.confirmation import CONFIRMATION_MODES, ConfirmationMode
 from openhands_cli.instructions.dev_skills import ANALYSIS_ARCHITECT_AND_FRAMEWORK
+from openhands_cli.locations import get_work_dir
 from openhands_cli.shared.slash_commands import (
     parse_slash_command as parse_slash_command,
 )
@@ -89,7 +90,6 @@ def get_available_slash_commands() -> list[AvailableCommand]:
                 root=UnstructuredCommandInput(hint="No arguments"),
             ),
         ),
-
     ]
 
 
@@ -276,18 +276,34 @@ def handle_analysis_architect_and_framework(
     Returns:
         Response text to send to the user
     """
-    if not argument or not argument.strip():
-        return (
-            "Usage: /analysis_architect_and_framework <target>\n\n"
-            "Examples:\n"
-            "  /analysis_architect_and_framework src/main.py\n"
-            "  /analysis_architect_and_framework ./services/user_service\n"
-            "  /analysis_architect_and_framework auth_module\n\n"
-            "Please specify a file, folder, module, or service to analyze."
-        )
 
-    target = argument.strip()
-    skill_content = ANALYSIS_ARCHITECT_AND_FRAMEWORK.content
+    target = argument.strip() if argument.strip() else get_work_dir()
+    skill_content = """
+You are a Senior Architect with 15+ years of experience
+
+Your task is to analyze the entire project source code, to provide the output to architect.md :
+
+## 1. Architecture Overview
+
+```
+Explain the architecture of this project.
+Describe the folder structure, main components, how they interact with each other.
+Overall data flow from input to output.
+```
+
+## 2. Framework Overview
+
+```
+What frameworks are used in this project.
+What design patterns are used.
+```
+
+## 3. Modules Overview
+
+```
+Explain what modules are consisted in the project, basic functions for each module.
+    ```
+"""
     return f"Analysis target: {target}\n\n{skill_content}"
 
 
@@ -308,11 +324,13 @@ def get_unknown_command_text(command: str) -> str:
         f"Use /help for more information."
     )
 
+
 def get_help_configure_sonar_scanner() -> str:
     return (
         "Create a Sonar Scanner configuration file\n\n"
         "This tool helps generating sonar-project.properties file for the current project.\n\n"
     )
+
 
 def get_help_run_unit_test() -> str:
     return (
@@ -320,11 +338,13 @@ def get_help_run_unit_test() -> str:
         "This tool helps running unit test for entire project with coverage reports.\n\n"
     )
 
+
 def get_help_post_sonarqube_server() -> str:
     return (
         "Posting Unit Test result and source coverage to SonarQube server\n\n"
         "This tool helps posting unit test result and source coverage to a remote SonarQube server.\n\n"
     )
+
 
 def get_help_generate_single_unit_test() -> str:
     return (

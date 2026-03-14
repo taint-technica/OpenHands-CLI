@@ -1,0 +1,201 @@
+
+--------------------Test Case--------------------
+Import Statements:
+import pytest
+from openhands_cli.acp_impl.utils.mcp import convert_acp_mcp_servers_to_agent_format
+from acp.schema import HttpMcpServer, SseMcpServer, HttpHeader
+
+Required Library Installation
+# No additional libraries required
+
+Test Implementation:
+@pytest.mark.parametrize("server_class,expected_transport", [
+    ("http", "http"),
+    ("sse", "sse"),
+])
+def test_should_set_correct_transport_for_http_and_sse_servers(server_class, expected_transport):
+    # Arrange
+    from openhands_cli.acp_impl.utils.mcp import convert_acp_mcp_servers_to_agent_format
+    from acp.schema import HttpMcpServer, SseMcpServer, HttpHeader
+    
+    if server_class == "http":
+        server = HttpMcpServer(
+            name="test_http_server",
+            url="http://localhost:8000",
+            headers=[HttpHeader(name="Authorization", value="Bearer token")]
+        )
+    else:  # sse
+        server = SseMcpServer(
+            name="test_sse_server",
+            url="http://localhost:8001/sse",
+            headers=[HttpHeader(name="X-Custom", value="header")]
+        )
+    
+    # Act
+    result = convert_acp_mcp_servers_to_agent_format([server])
+    
+    # Assert
+    server_name = "test_http_server" if server_class == "http" else "test_sse_server"
+    assert server_name in result
+    assert result[server_name]["transport"] == expected_transport
+    assert "name" not in result[server_name]
+
+
+Error Message:
+tests/acp_impl/utils/test_mcp.py::test_should_set_correct_transport_for_http_and_sse_servers[http-http] [31mFAILED[0m[31m [ 88%][0m
+tests/acp_impl/utils/test_mcp.py::test_should_set_correct_transport_for_http_and_sse_servers[sse-sse] [31mFAILED[0m[31m [100%][0m
+
+=================================== FAILURES ===================================
+[31m[1m____ test_should_set_correct_transport_for_http_and_sse_servers[http-http] _____[0m
+[1m[31mtests/acp_impl/utils/test_mcp.py[0m:71: in test_should_set_correct_transport_for_http_and_sse_servers
+    [0mserver = HttpMcpServer([90m[39;49;00m
+[1m[31mE   pydantic_core._pydantic_core.ValidationError: 1 validation error for HttpMcpServer[0m
+[1m[31mE   type[0m
+[1m[31mE     Field required [type=missing, input_value={'name': 'test_http_serve... value='Bearer token')]}, input_type=dict][0m
+[1m[31mE       For further information visit https://errors.pydantic.dev/2.12/v/missing[0m
+[31m[1m_____ test_should_set_correct_transport_for_http_and_sse_servers[sse-sse] ______[0m
+[1m[31mtests/acp_impl/utils/test_mcp.py[0m:77: in test_should_set_correct_transport_for_http_and_sse_servers
+    [0mserver = SseMcpServer([90m[39;49;00m
+[1m[31mE   pydantic_core._pydantic_core.ValidationError: 1 validation error for SseMcpServer[0m
+[1m[31mE   type[0m
+[1m[31mE     Field required [type=missing, input_value={'name': 'test_sse_server...stom', value='header')]}, input_type=dict][0m
+[1m[31mE       For further information visit https://errors.pydantic.dev/2.12/v/missing[0m
+[36m[1m=========================== short test summary info ============================[0m
+[31mFAILED[0m tests/acp_impl/utils/test_mcp.py::[1mtest_should_set_correct_transport_for_http_and_sse_servers[http-http][0m - pydantic_core._pydantic_core.ValidationError: 1 validation error for HttpMc...
+[31mFAILED[0m tests/acp_impl/utils/test_mcp.py::[1mtest_should_set_correct_transport_for_http_and_sse_servers[sse-sse][0m - pydantic_core._pydantic_core.ValidationError: 1 validation error for SseMcp...
+[31m========================= [31m[1m2 failed[0m, [32m7 passed[0m[31m in 4.75s[0m[31m ==========================[0m
+
+-------------------------------------------------
+
+--------------------Test Case--------------------
+Import Statements:
+import pytest
+from openhands_cli.acp_impl.utils.mcp import convert_acp_mcp_servers_to_agent_format
+from acp.schema import StdioMcpServer, HttpMcpServer, HttpHeader
+
+Required Library Installation
+# No additional libraries required
+
+Test Implementation:
+def test_should_handle_edge_cases_when_converting_servers():
+    # Arrange
+    from openhands_cli.acp_impl.utils.mcp import convert_acp_mcp_servers_to_agent_format
+    from acp.schema import StdioMcpServer, HttpMcpServer, HttpHeader
+    
+    # Test 1: Empty server list
+    result_empty = convert_acp_mcp_servers_to_agent_format([])
+    assert result_empty == {}
+    
+    # Test 2: Server without env field (HttpMcpServer doesn't have env)
+    http_server = HttpMcpServer(
+        name="http_no_env",
+        url="http://localhost:9000",
+        headers=[]
+    )
+    result_no_env = convert_acp_mcp_servers_to_agent_format([http_server])
+    assert "http_no_env" in result_no_env
+    assert "env" not in result_no_env["http_no_env"]
+    assert result_no_env["http_no_env"]["transport"] == "http"
+    
+    # Test 3: Multiple servers in batch
+    stdio_server = StdioMcpServer(
+        name="server1",
+        command="cmd1",
+        args=["arg1"],
+        env=[]
+    )
+    http_server2 = HttpMcpServer(
+        name="server2",
+        url="http://localhost:8000",
+        headers=[]
+    )
+    result_batch = convert_acp_mcp_servers_to_agent_format([stdio_server, http_server2])
+    assert len(result_batch) == 2
+    assert "server1" in result_batch
+    assert "server2" in result_batch
+    assert result_batch["server1"]["transport"] == "stdio"
+    assert result_batch["server2"]["transport"] == "http"
+
+
+Error Message:
+tests/acp_impl/utils/test_mcp.py::test_should_convert_stdio_server_to_agent_format_when_valid_server_provided [32mPASSED[0m[32m [ 87%][0m
+tests/acp_impl/utils/test_mcp.py::test_should_handle_edge_cases_when_converting_servers [31mFAILED[0m[31m [100%][0m
+
+=================================== FAILURES ===================================
+[31m[1m____________ test_should_handle_edge_cases_when_converting_servers _____________[0m
+[1m[31mtests/acp_impl/utils/test_mcp.py[0m:70: in test_should_handle_edge_cases_when_converting_servers
+    [0mhttp_server = HttpMcpServer([90m[39;49;00m
+[1m[31mE   pydantic_core._pydantic_core.ValidationError: 1 validation error for HttpMcpServer[0m
+[1m[31mE   type[0m
+[1m[31mE     Field required [type=missing, input_value={'name': 'http_no_env', '...st:9000', 'headers': []}, input_type=dict][0m
+[1m[31mE       For further information visit https://errors.pydantic.dev/2.12/v/missing[0m
+[36m[1m=========================== short test summary info ============================[0m
+[31mFAILED[0m tests/acp_impl/utils/test_mcp.py::[1mtest_should_handle_edge_cases_when_converting_servers[0m - pydantic_core._pydantic_core.ValidationError: 1 validation error for HttpMc...
+[31m========================= [31m[1m1 failed[0m, [32m7 passed[0m[31m in 4.90s[0m[31m ==========================[0m
+
+-------------------------------------------------
+
+--------------------Test Case--------------------
+Import Statements:
+import pytest
+from openhands_cli.acp_impl.utils.mcp import convert_acp_mcp_servers_to_agent_format
+from acp.schema import StdioMcpServer, EnvVariable
+
+Required Library Installation
+# No additional libraries required
+
+Test Implementation:
+def test_should_preserve_all_server_fields_during_conversion():
+    # Arrange
+    from openhands_cli.acp_impl.utils.mcp import convert_acp_mcp_servers_to_agent_format
+    from acp.schema import StdioMcpServer, EnvVariable
+    
+    server = StdioMcpServer(
+        name="comprehensive_server",
+        command="/path/to/command",
+        args=["--flag1", "value1", "--flag2"],
+        env=[
+            EnvVariable(name="ENV1", value="val1"),
+            EnvVariable(name="ENV2", value="val2"),
+        ]
+    )
+    
+    # Act
+    result = convert_acp_mcp_servers_to_agent_format([server])
+    
+    # Assert
+    server_config = result["comprehensive_server"]
+    assert server_config["command"] == "/path/to/command"
+    assert server_config["args"] == ["--flag1", "value1", "--flag2"]
+    assert server_config["env"] == {"ENV1": "val1", "ENV2": "val2"}
+    assert server_config["transport"] == "stdio"
+    assert "name" not in server_config
+    # Verify no extra fields were added
+    expected_keys = {"command", "args", "env", "transport"}
+    assert set(server_config.keys()) == expected_keys
+
+
+Error Message:
+tests/acp_impl/utils/test_mcp.py::test_should_convert_stdio_server_to_agent_format_when_valid_server_provided [32mPASSED[0m[32m [ 87%][0m
+tests/acp_impl/utils/test_mcp.py::test_should_preserve_all_server_fields_during_conversion [31mFAILED[0m[31m [100%][0m
+
+=================================== FAILURES ===================================
+[31m[1m___________ test_should_preserve_all_server_fields_during_conversion ___________[0m
+[1m[31mtests/acp_impl/utils/test_mcp.py[0m:86: in test_should_preserve_all_server_fields_during_conversion
+    [0m[94massert[39;49;00m [96mset[39;49;00m(server_config.keys()) == expected_keys[90m[39;49;00m
+[1m[31mE   AssertionError: assert {'args', 'com..., 'transport'} == {'args', 'com..., 'transport'}[0m
+[1m[31mE     [0m
+[1m[31mE     Extra items in the left set:[0m
+[1m[31mE     [0m[33m'[39;49;00m[33mfield_meta[39;49;00m[33m'[39;49;00m[90m[39;49;00m[0m
+[1m[31mE     [0m
+[1m[31mE     Full diff:[0m
+[1m[31mE     [0m[90m [39;49;00m {[90m[39;49;00m[0m
+[1m[31mE     [90m [39;49;00m     'args',[90m[39;49;00m...[0m
+[1m[31mE     [0m
+[1m[31mE     ...Full output truncated (5 lines hidden), use '-vv' to show[0m
+[36m[1m=========================== short test summary info ============================[0m
+[31mFAILED[0m tests/acp_impl/utils/test_mcp.py::[1mtest_should_preserve_all_server_fields_during_conversion[0m - AssertionError: assert {'args', 'com..., 'transport'} == {'args', 'com..., ...
+[31m========================= [31m[1m1 failed[0m, [32m7 passed[0m[31m in 4.88s[0m[31m ==========================[0m
+
+-------------------------------------------------
+

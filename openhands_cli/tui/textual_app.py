@@ -77,6 +77,7 @@ from openhands_cli.tui.core.conversation_manager import SwitchConfirmed
 from openhands_cli.tui.core.runner_factory import RunnerFactory
 from openhands_cli.tui.modals import SettingsScreen
 from openhands_cli.tui.modals.exit_modal import ExitConfirmationModal
+from openhands_cli.tui.panels.code_tree_panel import CodeTreeSidePanel
 from openhands_cli.tui.panels.history_side_panel import HistorySidePanel
 from openhands_cli.tui.panels.mcp_side_panel import MCPSidePanel
 from openhands_cli.tui.panels.plan_side_panel import PlanSidePanel
@@ -101,6 +102,7 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         ("ctrl+q", "request_quit", "Quit the application"),
         ("ctrl+c", "request_quit", "Quit the application"),
         ("ctrl+d", "request_quit", "Quit the application"),
+        ("ctrl+t", "toggle_code_tree", "Toggle code tree panel"),
     ]
 
     input_field: getters.query_one[InputField] = getters.query_one(InputField)
@@ -209,6 +211,8 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
 
         self.plan_panel: PlanSidePanel = PlanSidePanel(self)
 
+        self.code_tree_panel: CodeTreeSidePanel | None = None
+
         # Register the custom theme
         self.register_theme(OPENHANDS_THEME)
 
@@ -269,6 +273,11 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             "Plan",
             "View agent plan",
             lambda: self.plan_panel.toggle(),
+        )
+        yield SystemCommand(
+            "Code Tree",
+            "Toggle project code tree panel",
+            self.action_toggle_code_tree,
         )
         yield SystemCommand("Settings", "Configure settings", self.action_open_settings)
 
@@ -716,6 +725,10 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             self,
             current_conversation_id=self.conversation_id,
         )
+
+    def action_toggle_code_tree(self) -> None:
+        """Toggle the code tree side panel."""
+        CodeTreeSidePanel.toggle(self)
 
     # =========================================================================
     # UI Event Handlers - Handle events from ConversationManager

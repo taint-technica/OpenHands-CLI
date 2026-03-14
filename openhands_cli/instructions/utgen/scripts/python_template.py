@@ -8,21 +8,47 @@ All content is compiled and protected by Nuitka.
 PYTHON_SCRIPT_TEMPLATE = """\
 #!/bin/bash
 
+SOURCE_FILE_PATH="{{SOURCE_FILE_PATH}}"
+TEST_FILE_PATH="{{TEST_FILE_PATH}}"
+COVERAGE_REPORT_PATH="${{COVERAGE_REPORT_PATH:-coverage.xml}}"
+COVERAGE_FORMAT="${{COVERAGE_FORMAT:-cobertura}}"
+TEST_COMMAND="{{TEST_COMMAND}}"
+EXPECTED_COVERAGE="${{EXPECTED_COVERAGE:-85}}"
+MAX_ITERATIONS="${{MAX_ITERATIONS:-5}}"
+LLM_BASE_URL="${{LLM_BASE_URL:-http://0.0.0.0:4000}}"
+MODEL="${{MODEL:-claude-haiku-4-5}}"
+LLM_API_VERSION="${{LLM_API_VERSION:-}}"
+FUNCTION_UNDER_TEST="${{FUNCTION_UNDER_TEST:-}}"
+FLAKINESS="${{FLAKINESS:-false}}"
+SERVER_URL="${{SERVER_URL:-}}"
+
+# Load architect.md if exists, combine with user prompt
 ADDITIONAL_PROMPT=""
 [ -f "architect.md" ] && ADDITIONAL_PROMPT="$(cat architect.md)"
+USER_PROMPT="{{ADDITIONAL_PROMPT}}"
+[ -n "$USER_PROMPT" ] && ADDITIONAL_PROMPT="${{ADDITIONAL_PROMPT:+$ADDITIONAL_PROMPT\\n}}$USER_PROMPT"
 
 [ -d ".venv" ] && source .venv/bin/activate
 
-KEPLOY_ARGS=(
-  --sourceFilePath="{{SOURCE_FILE_PATH}}"
-  --testFilePath="{{TEST_FILE_PATH}}"
-  --coverageReportPath="${{COVERAGE_REPORT_PATH:-coverage.xml}}"
-  --coverageFormat="cobertura"
-  --testCommand="{{TEST_COMMAND}}"
-  --expected-coverage={{EXPECTED_COVERAGE}}
-  --maxIterations={{MAX_ITERATIONS}}
-)
-[ -n "$ADDITIONAL_PROMPT" ] && KEPLOY_ARGS+=(--additional-prompt="$ADDITIONAL_PROMPT")
+export API_KEY="dummy"
 
-keploy gen "${{KEPLOY_ARGS[@]}}"
+KEPLOY_CMD="keploy gen"
+KEPLOY_CMD+=" --sourceFilePath=\\"$SOURCE_FILE_PATH\\""
+KEPLOY_CMD+=" --testFilePath=\\"$TEST_FILE_PATH\\""
+KEPLOY_CMD+=" --coverageReportPath=\\"$COVERAGE_REPORT_PATH\\""
+KEPLOY_CMD+=" --coverageFormat=\\"$COVERAGE_FORMAT\\""
+KEPLOY_CMD+=" --testCommand=\\"$TEST_COMMAND\\""
+KEPLOY_CMD+=" --expected-coverage=$EXPECTED_COVERAGE"
+KEPLOY_CMD+=" --maxIterations=$MAX_ITERATIONS"
+KEPLOY_CMD+=" --llmBaseUrl=\\"$LLM_BASE_URL\\""
+KEPLOY_CMD+=" --model=\\"$MODEL\\""
+
+[ -n "$LLM_API_VERSION" ] && KEPLOY_CMD+=" --llm-api-version=\\"$LLM_API_VERSION\\""
+[ -n "$ADDITIONAL_PROMPT" ] && KEPLOY_CMD+=" --additional-prompt=\\"$ADDITIONAL_PROMPT\\""
+[ -n "$FUNCTION_UNDER_TEST" ] && KEPLOY_CMD+=" --function-under-test=\\"$FUNCTION_UNDER_TEST\\""
+[ "$FLAKINESS" = "true" ] && KEPLOY_CMD+=" --flakiness"
+[ -n "$SERVER_URL" ] && KEPLOY_CMD+=" --server-url=\\"$SERVER_URL\\""
+
+eval $KEPLOY_CMD
+exit $?
 """

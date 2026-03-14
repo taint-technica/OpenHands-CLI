@@ -105,6 +105,10 @@ def should_set_litellm_extra_body(model_name: str, base_url: str | None = None) 
     if base_url and _LLM_PROXY_PATTERN.match(base_url):
         return True
 
+    # Support local LiteLLM proxy via env var opt-in
+    if os.environ.get("OPENHANDS_SEND_LLM_METADATA", "").lower() == "true":
+        return True
+
     return False
 
 
@@ -144,6 +148,7 @@ def get_llm_metadata(
         pass
 
     metadata = {
+        "trace_name": f"openhands-cli/{llm_type}",
         "trace_version": openhands_sdk_version,
         "tags": [
             "app:openhands-cli",

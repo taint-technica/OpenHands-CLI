@@ -17,7 +17,11 @@ CLI_ARGUMENTS = """
 | `--coverage-format` | Report type (cobertura/jacoco) | Platform-specific |
 | `--expected-coverage` | Target coverage % | 85 |
 | `--max-iterations` | Max generation attempts | 5 |
+| `--llm-base-url` | AI model endpoint | http://0.0.0.0:4000 |
+| `--model` | Model name | claude-haiku-4-5 |
 | `--additional-prompt` | Extra context (e.g., architect.md) | "" |
+| `--function-under-test` | Specific function to test | "" |
+| `--flakiness` | Run flakiness check | false |
 """
 
 KEPLOY_KEYWORDS = [

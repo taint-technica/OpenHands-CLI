@@ -24,9 +24,9 @@ SERVER_URL="${{SERVER_URL:-}}"
 JAVA_HOME="{{JAVA_HOME}}"
 BUILD_CLEAN_COMMAND="{{BUILD_CLEAN_COMMAND}}"
 
-# Load architect.md if exists, combine with user prompt
+# Load ARCHITECTURE.md if exists, combine with user prompt
 ADDITIONAL_PROMPT=""
-[ -f "architect.md" ] && ADDITIONAL_PROMPT="$(cat architect.md)"
+[ -f "ARCHITECTURE.md" ] && ADDITIONAL_PROMPT="$(cat ARCHITECTURE.md)"
 USER_PROMPT="{{ADDITIONAL_PROMPT}}"
 [ -n "$USER_PROMPT" ] && ADDITIONAL_PROMPT="${{ADDITIONAL_PROMPT:+$ADDITIONAL_PROMPT\\n}}$USER_PROMPT"
 

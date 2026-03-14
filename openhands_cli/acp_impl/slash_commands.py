@@ -1,0 +1,350 @@
+"""Slash commands implementation for ACP."""
+
+import logging
+
+from acp.schema import AvailableCommand, AvailableCommandInput, UnstructuredCommandInput
+
+from openhands.sdk import BaseConversation
+from openhands.sdk.security.confirmation_policy import (
+    AlwaysConfirm,
+    ConfirmRisky,
+    NeverConfirm,
+)
+from openhands.sdk.security.llm_analyzer import LLMSecurityAnalyzer
+from openhands_cli.acp_impl.confirmation import CONFIRMATION_MODES, ConfirmationMode
+from openhands_cli.shared.slash_commands import (
+    parse_slash_command as parse_slash_command,
+)
+
+
+logger = logging.getLogger(__name__)
+
+VALID_CONFIRMATION_MODE: list[ConfirmationMode] = [
+    "always-ask",
+    "always-approve",
+    "llm-approve",
+]
+
+
+def get_available_slash_commands() -> list[AvailableCommand]:
+    """Get list of available slash commands in ACP format.
+
+    Returns:
+        List of AvailableCommand objects
+    """
+    # Dynamically construct mode options from CONFIRMATION_MODES
+    mode_options = " | ".join(CONFIRMATION_MODES.keys())
+    mode_list = "|".join(CONFIRMATION_MODES.keys())
+
+    return [
+        AvailableCommand(
+            name="help",
+            description="Show available slash commands",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
+            ),
+        ),
+        AvailableCommand(
+            name="confirm",
+            description=f"Control confirmation mode ({mode_list})",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint=mode_options),
+            ),
+        ),
+        AvailableCommand(
+            name="analysis_architect_and_framework",
+            description="Analyze code architecture and framework structure",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(
+                    hint="File path | Folder path | Module name | Service name",
+                ),
+            ),
+        ),
+        AvailableCommand(
+            name="configure_sonar_scanner",
+            description="Create a Sonar Scanner configuration file",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
+            ),
+        ),
+        AvailableCommand(
+            name="run_unit_test",
+            description="Run Unit Test for Sonar report",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
+            ),
+        ),
+        AvailableCommand(
+            name="post_sonarqube_server",
+            description="Posting Unit Test result and source coverage to SonarQube server",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
+            ),
+        ),
+        AvailableCommand(
+            name="generate_single_unit_test",
+            description="Generate Unit Test for a single file",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
+            ),
+        ),
+
+    ]
+
+
+def create_help_text() -> str:
+    """Create help text for available slash commands.
+
+    Returns:
+        Formatted help text
+    """
+    commands = get_available_slash_commands()
+    lines = ["Available slash commands:", ""]
+    for cmd in commands:
+        lines.append(f"  /{cmd.name} - {cmd.description}")
+    return "\n".join(lines)
+
+
+def get_confirm_help_text(current_mode: ConfirmationMode) -> str:
+    """Get help text for /confirm command.
+
+    Args:
+        current_mode: Current confirmation mode
+
+    Returns:
+        Formatted help text
+    """
+    modes_list = "\n".join(
+        f"  {mode:14} - {info['short']}" for mode, info in CONFIRMATION_MODES.items()
+    )
+    return (
+        f"Current confirmation mode: {current_mode}\n\n"
+        f"Available modes:\n"
+        f"{modes_list}\n\n"
+        f"Usage: /confirm <mode>\n"
+        f"Example: /confirm always-ask"
+    )
+
+
+def get_confirm_error_text(invalid_mode: str, current_mode: ConfirmationMode) -> str:
+    """Get error text for invalid /confirm mode.
+
+    Args:
+        invalid_mode: The invalid mode provided by user
+        current_mode: Current confirmation mode
+
+    Returns:
+        Formatted error text
+    """
+    modes_list = "\n".join(
+        f"  {mode:14} - {info['short']}" for mode, info in CONFIRMATION_MODES.items()
+    )
+    return (
+        f"Unknown mode: {invalid_mode}\n\n"
+        f"Available modes:\n"
+        f"{modes_list}\n\n"
+        f"Current mode: {current_mode}"
+    )
+
+
+def get_confirm_success_text(mode: ConfirmationMode) -> str:
+    """Get success text after changing confirmation mode.
+
+    Args:
+        mode: The new confirmation mode
+
+    Returns:
+        Formatted success text
+    """
+    return f"Confirmation mode set to: {mode}\n\n{CONFIRMATION_MODES[mode]['long']}"
+
+
+def validate_confirmation_mode(mode_str: str) -> ConfirmationMode | None:
+    """Validate and return confirmation mode.
+
+    Args:
+        mode_str: Mode string to validate
+
+    Returns:
+        ConfirmationMode if valid, None otherwise
+    """
+    normalized = mode_str.lower().strip()
+    return normalized if normalized in VALID_CONFIRMATION_MODE else None
+
+
+def apply_confirmation_mode_to_conversation(
+    conversation: BaseConversation,
+    mode: ConfirmationMode,
+    session_id: str,
+) -> None:
+    """Apply confirmation mode to a conversation.
+
+    Args:
+        conversation: The conversation to update
+        mode: The confirmation mode to apply
+        session_id: The session ID (for logging)
+    """
+    if mode == "always-ask":
+        # Always ask for confirmation
+        conversation.set_security_analyzer(LLMSecurityAnalyzer())
+        conversation.set_confirmation_policy(AlwaysConfirm())
+
+    elif mode == "always-approve":
+        # Never ask for confirmation - auto-approve everything
+        conversation.set_security_analyzer(LLMSecurityAnalyzer())
+        conversation.set_confirmation_policy(NeverConfirm())
+
+    elif mode == "llm-approve":
+        # Use LLM to analyze and only confirm risky actions
+        conversation.set_security_analyzer(LLMSecurityAnalyzer())
+        conversation.set_confirmation_policy(ConfirmRisky())
+
+    logger.debug(f"Set confirmation mode to {mode} for session {session_id}")
+
+
+def get_confirmation_mode_from_conversation(
+    conversation: BaseConversation,
+) -> ConfirmationMode:
+    """Get current confirmation mode from a conversation's policy.
+
+    Args:
+        conversation: The conversation to query
+
+    Returns:
+        Current confirmation mode as a string
+        ("always-ask", "always-approve", or "llm-approve")
+    """
+    policy = conversation.state.confirmation_policy
+
+    if isinstance(policy, NeverConfirm):
+        return "always-approve"
+    elif isinstance(policy, ConfirmRisky):
+        return "llm-approve"
+    elif isinstance(policy, AlwaysConfirm):
+        return "always-ask"
+    else:
+        # Default to always-ask for unknown policies
+        logger.warning(
+            f"Unknown confirmation policy: {type(policy)}, defaulting to always-ask"
+        )
+        return "always-ask"
+
+
+def handle_confirm_argument(
+    current_mode: ConfirmationMode, argument: str
+) -> tuple[str, ConfirmationMode | None]:
+    """Handle /confirm command and return response.
+
+    This is a pure function that computes the response text and new mode
+    without any side effects.
+
+    Args:
+        current_mode: Current confirmation mode for the session
+        argument: Command argument (mode to set, or empty for help)
+
+    Returns:
+        Tuple of (response_text, new_mode_or_none). new_mode is None if
+        no mode change should occur (help text or invalid mode).
+    """
+    # If no argument provided, show current state and prompt for mode
+    if not argument.strip():
+        return get_confirm_help_text(current_mode), None
+
+    # Validate mode
+    mode = validate_confirmation_mode(argument)
+    if mode is None:
+        return get_confirm_error_text(argument, current_mode), None
+
+    # Return success message with the new mode
+    return get_confirm_success_text(mode), mode
+
+
+def handle_analysis_architect_and_framework(
+    argument: str,
+) -> str:
+    """Handle /analysis_architect_and_framework command and return response.
+
+    This command activates the Analysis Architect & Framework skill to analyze
+    code architecture and framework structure.
+
+    Args:
+        argument: Command argument (file path, folder path, module name, etc.)
+
+    Returns:
+        Response text to send to the user
+    """
+    if not argument or not argument.strip():
+        return (
+            "Analysis Architect & Framework\n\n"
+            "This tool helps analyze software architecture and framework structures.\n\n"
+            "Usage: /analysis_architect_and_framework <target>\n\n"
+            "Examples:\n"
+            "  /analysis_architect_and_framework src/main.py\n"
+            "  /analysis_architect_and_framework ./services/user_service\n"
+            "  /analysis_architect_and_framework auth_module\n\n"
+            "Supported analysis levels:\n"
+            "  - Single File: Analyze structure of a single code file\n"
+            "  - Multi Files: Analyze relationships between multiple files\n"
+            "  - Module: Analyze complete functional modules\n"
+            "  - Service: Analyze service-oriented architecture components\n"
+            "  - Router: Analyze routing and request handling patterns\n"
+            "  - Domain: Analyze domain-driven design implementation\n\n"
+            "Please specify a file, folder, module, or service to analyze."
+        )
+
+    # Return a message indicating the analysis will be performed
+    target = argument.strip()
+    return (
+        f"Starting Architecture Analysis for: {target}\n\n"
+        "I will analyze the code structure, dependencies, design patterns, "
+        "and architectural decisions. This includes:\n\n"
+        "1. **Structure Analysis**: Understanding code organization and responsibilities\n"
+        "2. **Dependency Mapping**: Identifying imports, dependencies, and interactions\n"
+        "3. **Pattern Detection**: Recognizing design patterns and architectural styles\n"
+        "4. **Framework Analysis**: Examining framework-specific configurations and patterns\n"
+        "5. **Documentation**: Generating architecture documentation and recommendations\n\n"
+        f"Analyzing target: {target}\n\n"
+        "Please wait while I examine the codebase..."
+    )
+
+
+def get_unknown_command_text(command: str) -> str:
+    """Get error text for unknown slash command.
+
+    Args:
+        command: The unknown command
+
+    Returns:
+        Formatted error text
+    """
+    commands = get_available_slash_commands()
+    command_list = ", ".join(f"/{cmd.name}" for cmd in commands)
+    return (
+        f"Unknown command: /{command}\n\n"
+        f"Available commands: {command_list}\n"
+        f"Use /help for more information."
+    )
+
+def get_help_configure_sonar_scanner() -> str:
+    return (
+        "Create a Sonar Scanner configuration file\n\n"
+        "This tool helps generating sonar-project.properties file for the current project.\n\n"
+    )
+
+def get_help_run_unit_test() -> str:
+    return (
+        "Run Unit Test for Sonar report\n\n"
+        "This tool helps running unit test for entire project with coverage reports.\n\n"
+    )
+
+def get_help_post_sonarqube_server() -> str:
+    return (
+        "Posting Unit Test result and source coverage to SonarQube server\n\n"
+        "This tool helps posting unit test result and source coverage to a remote SonarQube server.\n\n"
+    )
+
+def get_help_generate_single_unit_test() -> str:
+    return (
+        "Generate Unit Test for a single file \n\n"
+        "This tool helps generating Unit Test code for a single file.\n\n"
+    )

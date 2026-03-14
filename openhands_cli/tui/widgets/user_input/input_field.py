@@ -198,45 +198,6 @@ class InputField(Container):
     def focus_input(self) -> None:
         self.active_input_widget.focus()
 
-    def insert_file_mention(self, file_path: Path) -> None:
-        """Insert a file mention (@path/to/file) at the cursor position.
-
-        This method is designed to be called from external components like
-        CodeTreeSidePanel to insert file mentions into the input field.
-
-        Args:
-            file_path: Path to the file to mention
-        """
-        from openhands_cli.locations import get_work_dir
-
-        try:
-            # Get relative path from work directory
-            work_dir = Path(get_work_dir())
-            rel_path = file_path.relative_to(work_dir)
-            mention_text = f"@{rel_path}"
-
-            # Get current text
-            current_text = self._get_current_text()
-
-            # Add space before mention if needed
-            if current_text and not current_text.endswith(" "):
-                mention_text = " " + mention_text
-
-            # Insert mention at cursor position (or at end for now)
-            new_text = current_text + mention_text + " "
-
-            # Update input field
-            self.active_input_widget.text = new_text
-            self.active_input_widget.move_cursor(self.active_input_widget.document.end)
-            self.focus_input()
-
-        except Exception as e:
-            # Log error but don't crash
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.warning("Failed to insert file mention for %s: %s", file_path, e)
-
     @property
     def is_multiline_mode(self) -> bool:
         """Check if currently in multiline mode."""

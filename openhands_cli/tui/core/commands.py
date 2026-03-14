@@ -25,9 +25,20 @@ COMMANDS = [
     DropdownItem(main="/skills - View loaded skills, hooks, and MCPs"),
     DropdownItem(main="/feedback - Send anonymous feedback about CLI"),
     DropdownItem(main="/exit - Exit the application"),
-    DropdownItem(main="/code_tree - Toggle project code tree panel"),
     DropdownItem(
         main="/analysis_architect_and_framework - Analyze code architecture and framework structure"
+    ),
+    DropdownItem(
+        main="/generate_single_unit_test - Generate Unit Test for a single file"
+    ),
+    DropdownItem(
+        main="/configure_sonar_scanner - Create a Sonar Scanner configuration file"
+    ),
+    DropdownItem(
+        main="/run_unit_test - Run Unit Test for Sonar report"
+    ),
+    DropdownItem(
+        main="/post_sonarqube_server - Posting Unit Test result and source coverage to SonarQube server"
     ),
 ]
 
@@ -84,15 +95,16 @@ def show_help(scroll_view: VerticalScroll) -> None:
   [{secondary}]/skills[/{secondary}] - View loaded skills, hooks, and MCPs
   [{secondary}]/feedback[/{secondary}] - Send anonymous feedback about CLI
   [{secondary}]/exit[/{secondary}] - Exit the application
-  [{secondary}]/code_tree[/{secondary}] - Toggle project code tree panel
   [{secondary}]/analysis_architect_and_framework[/{secondary}] - Analyze code architecture and framework structure
+  [{secondary}]/generate_single_unit_test[/{secondary}] - Generate Unit Test for a single file
+  [{secondary}]/configure_sonar_scanner[/{secondary}] - Create a Sonar Scanner configuration file
+  [{secondary}]/run_unit_test[/{secondary}] - Run Unit Test for Sonar report
+  [{secondary}]/post_sonarqube_server[/{secondary}] - Posting Unit Test result and source coverage to SonarQube server
 
 [dim]Tips:[/dim]
   • Type / and press Tab to see command suggestions
   • Use arrow keys to navigate through suggestions
   • Press Enter to select a command
-  • Use Ctrl+T to quickly toggle code tree panel
-  • In code tree panel: arrow keys to navigate, Enter to mention file
 """
     help_widget = Static(help_text, classes="help-message")
     scroll_view.mount(help_widget)
@@ -121,3 +133,258 @@ def show_skills(
 
     skills_widget = Static(skills_text, classes="skills-message")
     scroll_view.mount(skills_widget)
+
+def show_generate_single_unit_test_progress(scroll_view: VerticalScroll) -> int:
+    """Display generating a single Unit test progress in the scroll view.
+    Args:
+        scroll_view: The VerticalScroll widget to mount content to
+    """
+    from openhands_cli.utils import get_current_wd, count_files_by_type, get_project_type
+    from openhands_cli.constants import CustomConstants
+
+    primary = OPENHANDS_THEME.primary
+    lines = [f"\n[bold {primary}]Reading project...[/bold {primary}]"]
+    lines.append("[dim]Summary:[/dim] Generating GenUnit_Test.sh\n")
+    cpath = get_current_wd()
+    lines.append(f"Current directory: {cpath}\n")
+
+    count_file_types = count_files_by_type(cpath)
+    # for file_type, count in sorted(count_file_types.items()):
+    #    lines.append(f"{file_type}: {count}")
+
+    proj_type = get_project_type(count_file_types)
+    match proj_type :
+        case CustomConstants.PROJECT_TYPE_PYTHON :
+            lines.append(f"PYTHON Project\n")
+        case  CustomConstants.PROJECT_TYPE_JAVA :
+            lines.append(f"JAVA Project\n")
+        case  CustomConstants.PROJECT_TYPE_UNKNOWN :
+            lines.append(f"UNKNOWN Project type\n")
+
+    skills_widget = Static("\n".join(lines), classes="skills-message")
+    scroll_view.mount(skills_widget)
+    return proj_type
+
+def show_scanner_config_progress(scroll_view: VerticalScroll) -> int:
+    """Display sonar scanner progress in the scroll view.
+    Args:
+        scroll_view: The VerticalScroll widget to mount content to
+    """
+    from openhands_cli.utils import get_current_wd, count_files_by_type, get_project_type
+    from openhands_cli.constants import CustomConstants
+
+    primary = OPENHANDS_THEME.primary
+    lines = [f"\n[bold {primary}]Reading project...[/bold {primary}]"]
+    lines.append("[dim]Summary:[/dim] Generating sonar-project.properties\n")
+    cpath = get_current_wd()
+    lines.append(f"Current directory: {cpath}\n")
+
+    count_file_types = count_files_by_type(cpath)
+    # for file_type, count in sorted(count_file_types.items()):
+    #    lines.append(f"{file_type}: {count}")
+
+    proj_type = get_project_type(count_file_types)
+    match proj_type :
+        case CustomConstants.PROJECT_TYPE_PYTHON :
+            lines.append(f"PYTHON Project\n")
+        case  CustomConstants.PROJECT_TYPE_JAVA :
+            lines.append(f"JAVA Project\n")
+        case  CustomConstants.PROJECT_TYPE_UNKNOWN :
+            lines.append(f"UNKNOWN Project type\n")
+
+    skills_widget = Static("\n".join(lines), classes="skills-message")
+    scroll_view.mount(skills_widget)
+    return proj_type
+
+    
+def generate_unit_test_gen_script(scroll_view: VerticalScroll, config_table: dict) -> bool:
+    from openhands_cli.ut_generation import generate_unit_test_script
+
+    if not validate_unit_test_gen_input(scroll_view, config_table) :
+        return  False
+
+    lines = []
+    lines.append(f"Generating UT script...\n")
+    
+    generate_unit_test_script(
+        config_table.get("src_file_name") or "",
+        config_table.get("coverage_expect") or 85,
+        config_table.get("num_iteration") or 5,
+    )
+
+    skills_widget = Static("\n".join(lines), classes="skills-message")
+    scroll_view.mount(skills_widget)
+    return  True
+
+def validate_unit_test_gen_input(scroll_view: VerticalScroll, config_table: dict) -> bool:
+    import os
+
+    src_file = config_table.get("src_file_name")
+    if not src_file or not os.path.isfile(src_file) :
+        skills_widget = Static(f"File \"{src_file}\" does not exist ! Exiting.\n", classes="skills-message")
+        scroll_view.mount(skills_widget)
+        return  False   
+     
+    coverage_expect = config_table.get("coverage_expect")
+    if not coverage_expect or int(coverage_expect) not in range(1, 100) :
+        skills_widget = Static(f"Coverage \"{coverage_expect}\" is invalid ! Exiting.\n", classes="skills-message")
+        scroll_view.mount(skills_widget)
+        return  False    
+
+    num_iteration = config_table.get("num_iteration")
+    if not num_iteration or int(num_iteration) < 1 :
+        skills_widget = Static(f"Number of iteration \"{num_iteration}\" is invalid ! Exiting.\n", classes="skills-message")
+        scroll_view.mount(skills_widget)
+        return  False
+    
+    return  True
+
+def generate_py_scanner_config(scroll_view: VerticalScroll, config_table: dict) -> bool:
+    import os
+    import uuid
+    from openhands_cli.utils import get_current_wd
+    from openhands_cli.constants import CustomConstants
+
+    cpath = get_current_wd()
+    filepath = os.path.join(cpath, "sonar-project.properties")
+    lines = []
+    lines.append(f"Creating File: {filepath}")
+
+    if os.path.exists(filepath):
+        lines.append(f"File {filepath} already exist ! Exiting...")
+        skills_widget = Static("\n".join(lines), classes="skills-message")
+        scroll_view.mount(skills_widget)
+        return False
+
+    with open(filepath, "w") as fd:
+        fd.write(f"sonar.projectName={config_table.get("project_name")}\n")
+        id_str = str(uuid.uuid4())
+        fd.write(f"sonar.projectKey={id_str}\n")
+        fd.write("sonar.projectVersion=1.0\n\n")
+
+        proj_type = config_table.get("project_type")
+        match proj_type :
+            case CustomConstants.PROJECT_TYPE_PYTHON :
+                # Source code location
+                fd.write(f"sonar.sources={config_table.get("inclusive_path")}\n")
+                fd.write(f"sonar.exclusions=**/__pycache__/**,**/.pytest_cache/**, **/.venv/**, {config_table.get("exclusive_path")}\n")
+                fd.write("sonar.coverage.exclusions=**/__init__.py, tests/**/*.py\n\n")
+                # Test file location
+                fd.write("sonar.tests=tests\n")
+                fd.write("sonar.test.inclusions=tests/**/*.py\n\n")
+                # Language specification
+                fd.write("sonar.language=py\n")
+                fd.write("sonar.sourceEncoding=UTF-8\n\n")
+                # Coverage and unit test reports
+                fd.write("sonar.python.coverage.reportPaths=src-coverage.xml\n")
+                fd.write("sonar.python.xunit.reportPath=ut-results.xml\n")
+            case  CustomConstants.PROJECT_TYPE_JAVA :
+                # Source code location
+                fd.write("sonar.sources=src/main/java\n")
+                fd.write(f"sonar.exclusions=**/.idea/**,**/.mvn/**,**/target/**, {config_table.get("exclusive_path")}\n")
+                fd.write("sonar.coverage.exclusions=src/test/**/*.java\n\n")
+                # Test file location
+                fd.write("sonar.tests=src/test/java\n")
+                fd.write("sonar.test.inclusions=src/test/java/**/*.java\n")
+                # Java specification
+                fd.write("sonar.java.binaries=target/classes\n")
+                fd.write("sonar.java.test.binaries=target/test-classes\n\n")
+                fd.write("sonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml\n")
+                fd.write("sonar.junit.reportPaths=target/surefire-reports\n\n")
+                # Language specification
+                fd.write("sonar.language=java\n")
+                fd.write("sonar.sourceEncoding=UTF-8\n")
+            case  CustomConstants.PROJECT_TYPE_UNKNOWN :
+                lines.append(f"UNKNOWN Project type\n")
+    
+    lines.append(f"File {filepath} created successfully.")
+    skills_widget = Static("\n".join(lines), classes="skills-message")
+    scroll_view.mount(skills_widget)
+    return True
+
+def run_unit_test_progress(scroll_view: VerticalScroll, proj_type : int) -> bool:
+    import subprocess
+    from openhands_cli.constants import CustomConstants
+    from openhands_cli.utils import get_current_wd
+    retval = True
+    lines = []
+
+    cpath = get_current_wd()
+    lines.append(f"Running Unit Test for entire project in {cpath}\n")
+
+    match proj_type :
+        case CustomConstants.PROJECT_TYPE_PYTHON :
+            lines.append("Running for Python project, please wait...\n")
+            with open("unit_test_result.log", "w") as fd:
+                result = subprocess.run(
+                    [
+                        "uv", "run", "pytest",
+                        "--verbose",
+                        "--cov=.",
+                        "--cov-report=xml:src-coverage.xml",
+                        "--cov-report=html:htmlcov",
+                        "--cov-report=term",
+                        "--junit-xml=ut-results.xml"
+                    ],
+                    cwd=cpath,
+                    stdout=fd, 
+                    stderr=fd  
+                )   
+            lines.append(f"Run completed, check unit_test_result.log for details.\n")
+        case CustomConstants.PROJECT_TYPE_JAVA :
+            lines.append("Running for Java project, please wait...\n")
+            # cmd_result = subprocess.run(["mvn", "clean", "verify"], cwd=cpath, capture_output=True, text=True)
+            # lines.append(f"{cmd_result.stdout}\n")
+            with open("unit_test_result.log", "w") as fd:
+                result = subprocess.run(
+                    ["mvn", "clean", "verify", "-Pcoverage"],
+                    cwd=cpath,
+                    stdout=fd, 
+                    stderr=fd  
+                )   
+            lines.append(f"Run completed, check unit_test_result.log for details.\n")
+        case CustomConstants.PROJECT_TYPE_UNKNOWN :
+            lines.append("Unknow project type.\n")
+            retval = False
+    
+    skills_widget = Static("\n".join(lines), classes="skills-message")
+    scroll_view.mount(skills_widget)
+    # scroll_view.scroll_end(animate=False)
+    return retval
+
+def post_sonarqube_server_progress(app) -> None:
+    import subprocess
+    import os    
+    from openhands_cli.tui.widgets.input_area import InputAreaContainer
+
+    input_area = app.query_one(InputAreaContainer)
+    scroll_view = input_area.scroll_view        
+       
+    retval = True
+
+    app.notify(
+            title="Posting result",
+            message="Posting Unit Test result and source coverage to SonarQube server. Please wait...\n",
+            severity="information",
+        )
+
+    # Setup enviroment variable before running
+    os.environ["SONAR_TOKEN"] = "squ_b0b20a727902a63aa8193043027cc05a5143921f"
+
+    with open("post_sonarqube_server_result.log", "w") as fd:
+        result = subprocess.run(
+            [
+                "sonar-scanner",
+                "-Dsonar.host.url=http://10.1.40.46:9000",
+                "-Dsonar.scm.disabled=true",
+                "-Dsonar.filesize.limit=150",
+            ],
+            env=os.environ,
+            stdout=fd, 
+            stderr=fd  
+        )
+
+    after_widget = Static("Posting has completed, check post_sonarqube_server_result.log for details.\n", classes="skills-message")
+    scroll_view.mount(after_widget)
+
+    return

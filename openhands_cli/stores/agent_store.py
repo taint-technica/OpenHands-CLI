@@ -31,6 +31,7 @@ from openhands_cli.locations import (
 )
 from openhands_cli.mcp.mcp_utils import list_enabled_servers
 from openhands_cli.stores.cli_settings import CliSettings
+from openhands_cli.stores.langfuse_store import LangfuseStore
 from openhands_cli.utils import (
     get_default_cli_agent,
     get_default_cli_tools,
@@ -403,6 +404,32 @@ class AgentStore:
             load_public_skills=True,
         )
 
+    def _enable_langfuse_callback(self, langfuse_store: LangfuseStore) -> None:
+        """Enable Langfuse tracing for LiteLLM."""
+        settings = langfuse_store.load()
+        if not settings.is_valid():
+            return
+
+        # Set environment variables for Langfuse
+        env_vars = settings.to_env_vars()
+        for key, value in env_vars.items():
+            os.environ[key] = value
+
+        # Enable Langfuse callbacks for LiteLLM
+        try:
+            import litellm
+
+            # Set Langfuse as success and failure callback
+            litellm.success_callback = ["langfuse"]
+            litellm.failure_callback = ["langfuse"]
+
+            print_formatted_text(
+                HTML(f"<dim>✓ Langfuse tracing enabled: {settings.host}</dim>")
+            )
+        except Exception as e:
+            # Silently fail - Langfuse is optional
+            print_formatted_text(HTML(f"<dim>⚠ Langfuse setup failed: {str(e)}</dim>"))
+
     def _maybe_build_condenser(
         self, agent: Agent, *, session_id: str | None
     ) -> LLMSummarizingCondenser | None:
@@ -430,6 +457,11 @@ class AgentStore:
         )
 
         agent_context = self._build_agent_context()
+
+        # Enable Langfuse tracing if configured
+        langfuse_store = LangfuseStore()
+        if langfuse_store.is_enabled():
+            self._enable_langfuse_callback(langfuse_store)
 
         enabled_servers = list_enabled_servers()
         mcp_config = {"mcpServers": enabled_servers} if enabled_servers else {}

@@ -160,35 +160,6 @@ OpenHands-CLI/
 
 ---
 
-### 4. **Keploy Unit Test Generation**
-
-**File:** `tests/test_utils.py`
-
-**Task:** Generate unit tests for `openhands_cli/utils.py` using Keploy AI-powered tool
-
-**Configuration:**
-- Expected coverage: 85% (✅ Achieved: 88%)
-- Max iterations: 5
-- Model: claude-haiku-4-5
-- LLM Base URL: http://localhost:4000 (local LiteLLM proxy)
-
-**Results:**
-- ✅ Tests generated: 54 test cases
-- ✅ Coverage achieved: 88% (target: 85%)
-- ✅ All tests passing: 54/54 PASSED
-- ✅ Execution time: 0.09s
-
-**Test Coverage Details:**
-- `abbreviate_number()` - 12 parametrized test cases ✅
-- `format_cost()` - 7 parametrized test cases ✅
-- `get_os_description()` - 8 test cases (all platforms) ✅
-- `should_set_litellm_extra_body()` - 15 parametrized test cases ✅
-- `extract_text_from_message_content()` - 6 test cases ✅
-- `get_llm_metadata()` - 2 test cases ✅
-- `create_seeded_instructions_from_args()` - 4 test cases ✅
-
----
-
 ## 🚀 Next Steps: Custom Slash Command
 
 ### **Command: `/analysis_architect_and_framework`**
@@ -282,22 +253,9 @@ TTY_INTERACTIVE=1 uv run openhands
 
 | File | Purpose |
 |------|---------|
-| `AGENTS.md` | This file - complete developer reference |
+| `AGENTS.md` | This file - developer reference |
 | `INSTRUCTIONS_GUIDE.md` | User guide for skills |
-
----
-
-## 📊 Performance Metrics
-
-| Metric | Value |
-|--------|-------|
-| Dev Skills Count | 9 |
-| Always-Active Skills | 3 |
-| Trigger-Based Skills | 6 |
-| Build Time (first) | 3-5 min |
-| Build Time (subsequent) | 1-2 min |
-| Binary Size | ~50-100 MB |
-| TUI Startup Time | ~2-3 sec |
+| `AGENTS_CUSTOMIZATION.md` | Detailed customization docs |
 
 ---
 

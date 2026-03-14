@@ -97,6 +97,9 @@ class InputAreaContainer(Container):
             case "analysis_architect_and_framework":
                 # Send to agent for processing (not handled by TUI)
                 self._command_send_to_agent(event.command)
+            case "code_analysis":
+                # Send to agent for processing (not handled by TUI)
+                self._command_send_to_agent(event.command)
             case "generate_single_unit_test":
                 self._command_generate_single_unit_test()
             case "configure_sonar_scanner":

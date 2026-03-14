@@ -6,7 +6,7 @@ LLM provider, model, API keys, and advanced options.
 """
 
 from collections.abc import Callable
-from typing import ClassVar, Literal, cast
+from typing import ClassVar
 
 from textual import getters
 from textual.app import ComposeResult
@@ -24,15 +24,15 @@ from textual.widgets._select import NoSelection
 
 from openhands.sdk import LLMSummarizingCondenser
 from openhands_cli.stores import AgentStore, CliSettings, CriticSettings
-from openhands_cli.tui.modals.settings.choices import (
-    get_model_options,
-)
 from openhands_cli.tui.modals.settings.components import (
     CliSettingsTab,
     CriticSettingsTab,
     SettingsTab,
 )
-from openhands_cli.tui.modals.settings.langfuse_config import LangfuseConfigModal
+from openhands_cli.tui.modals.settings.litellm_client import (
+    fetch_available_models,
+    test_proxy_connection,
+)
 from openhands_cli.tui.modals.settings.utils import SettingsFormData, save_settings
 
 
@@ -45,7 +45,13 @@ class SettingsScreen(ModalScreen):
 
     CSS_PATH = "settings_screen.tcss"
 
-    mode_select: getters.query_one[Select] = getters.query_one("#mode_select")
+    # New LiteLLM Proxy fields
+    proxy_url_input: getters.query_one[Input] = getters.query_one("#proxy_url_input")
+    fetch_models_button: getters.query_one[Button] = getters.query_one(
+        "#fetch_models_button"
+    )
+
+    # Keep existing fields for compatibility
     provider_select: getters.query_one[Select] = getters.query_one("#provider_select")
     model_select: getters.query_one[Select] = getters.query_one("#model_select")
     custom_model_input: getters.query_one[Input] = getters.query_one(
@@ -83,11 +89,11 @@ class SettingsScreen(ModalScreen):
         super().__init__(**kwargs)
         self.agent_store = AgentStore()
         self.current_agent = self.agent_store.load_from_disk()
-        self.is_advanced_mode = False
         self.message_widget = None
         self.is_initial_setup = SettingsScreen.is_initial_setup_required(
             env_overrides_enabled=env_overrides_enabled
         )
+        self.fetched_models: list[str] = []
 
         # Convert single callback to list for uniform handling
         if on_settings_saved is None:
@@ -128,13 +134,6 @@ class SettingsScreen(ModalScreen):
 
             # Buttons
             with Horizontal(id="button_container"):
-                # Langfuse Config Button
-                yield Button(
-                    "📊 Langfuse Tracing",
-                    variant="default",
-                    id="langfuse_button",
-                    classes="settings_button",
-                )
                 yield Button(
                     "Save",
                     variant="primary",
@@ -151,7 +150,6 @@ class SettingsScreen(ModalScreen):
     def on_mount(self) -> None:
         """Initialize the form with current settings."""
         self._load_current_settings()
-        self._update_advanced_visibility()
         self._update_field_dependencies()
 
     def on_show(self) -> None:
@@ -161,23 +159,28 @@ class SettingsScreen(ModalScreen):
         if not self.current_agent:
             self._clear_form()
             self._load_current_settings()
-            self._update_advanced_visibility()
             self._update_field_dependencies()
 
     def _clear_form(self) -> None:
         """Clear all form values before reloading."""
         self.api_key_input.value = ""
         self.api_key_input.placeholder = "Enter your API key"
-
-        self.custom_model_input.value = ""
-        self.base_url_input.value = ""
-        self.mode_select.value = "basic"
-        self.provider_select.clear()
-        self.model_select.clear()
+        self.proxy_url_input.value = "http://localhost:4000"
+        self.model_select.set_options([("Fetch models first", "")])
+        self.model_select.disabled = True
         self.memory_select.value = True
         self.timeout_input.value = ""
         self.max_tokens_input.value = ""
         self.max_size_input.value = ""
+        self.fetched_models = []
+
+    def _has_existing_api_key(self) -> bool:
+        """Check if there's an existing API key in the agent."""
+        return bool(
+            self.current_agent
+            and self.current_agent.llm
+            and self.current_agent.llm.api_key
+        )
 
     def _load_current_settings(self) -> None:
         """Load current settings into the form."""
@@ -186,24 +189,14 @@ class SettingsScreen(ModalScreen):
 
         llm = self.current_agent.llm
 
-        # Determine if we're in advanced mode
-        self.is_advanced_mode = bool(llm.base_url)
-        self.mode_select.value = "advanced" if self.is_advanced_mode else "basic"
+        # Set proxy URL (default to localhost:4000 if not set)
+        self.proxy_url_input.value = llm.base_url or "http://localhost:4000"
 
-        if self.is_advanced_mode:
-            # Advanced mode - populate custom model and base URL
-            self.custom_model_input.value = llm.model or ""
-            self.base_url_input.value = llm.base_url or ""
-        else:
-            # Basic mode - populate provider and model selects
-            if "/" in llm.model:
-                provider, model = llm.model.split("/", 1)
-                self.provider_select.value = provider
-
-                # Update model options and select current model
-                self._update_model_options(provider)
-                # Use model without provider prefix (dropdown options don't have it)
-                self.model_select.value = model
+        # Set model - will be populated after fetch if available
+        if llm.model:
+            # Pre-populate model select with current model
+            self.model_select.set_options([(llm.model, llm.model)])
+            self.model_select.value = llm.model
 
         # API Key (show masked version)
         if llm.api_key:
@@ -248,34 +241,6 @@ class SettingsScreen(ModalScreen):
         # Update field dependencies after loading all values
         self._update_field_dependencies()
 
-    def _update_model_options(self, provider: str) -> None:
-        """Update model select options based on provider."""
-        # Store current selection to preserve it if possible
-        current_selection = self.model_select.value
-
-        model_options = get_model_options(provider)
-
-        if model_options:
-            self.model_select.set_options(model_options)
-
-            # Try to preserve the current selection if it's still valid
-            if current_selection and not isinstance(current_selection, NoSelection):
-                # Check if the current selection is still in the new options
-                option_values = [option[1] for option in model_options]
-                if current_selection in option_values:
-                    self.model_select.value = current_selection
-        else:
-            self.model_select.set_options([("No models available", "")])
-
-    def _update_advanced_visibility(self) -> None:
-        """Show/hide basic and advanced sections based on mode."""
-        if self.is_advanced_mode:
-            self.basic_section.display = False
-            self.advanced_section.display = True
-        else:
-            self.basic_section.display = True
-            self.advanced_section.display = False
-
     def _has_existing_api_key(self) -> bool:
         """Check if there's an existing API key in the agent."""
         return bool(
@@ -287,80 +252,37 @@ class SettingsScreen(ModalScreen):
     def _update_field_dependencies(self) -> None:
         """Update field enabled/disabled state based on dependency chain."""
         try:
-            mode = (
-                self.mode_select.value if hasattr(self.mode_select, "value") else None
+            proxy_url = (
+                self.proxy_url_input.value.strip()
+                if hasattr(self.proxy_url_input, "value")
+                else ""
             )
             api_key = (
                 self.api_key_input.value.strip()
                 if hasattr(self.api_key_input, "value")
                 else ""
             )
-
-            # Dependency chain logic
-            is_basic_mode = mode == "basic"
-            is_advanced_mode = mode == "advanced"
-
-            # Basic mode fields
-            if is_basic_mode:
-                try:
-                    provider = (
-                        self.provider_select.value
-                        if hasattr(self.provider_select, "value")
-                        else None
-                    )
-                    model = (
-                        self.model_select.value
-                        if hasattr(self.model_select, "value")
-                        else None
-                    )
-
-                    # Provider is always enabled in basic mode
-                    self.provider_select.disabled = False
-
-                    # Model select: enabled when provider is selected
-                    self.model_select.disabled = not (
-                        provider and not isinstance(provider, NoSelection)
-                    )
-
-                    # API Key: enabled when model is selected
-                    self.api_key_input.disabled = not (
-                        model and not isinstance(model, NoSelection)
-                    )
-                except Exception:
-                    pass
-
-            # Advanced mode fields
-            elif is_advanced_mode:
-                try:
-                    custom_model = (
-                        self.custom_model_input.value.strip()
-                        if hasattr(self.custom_model_input, "value")
-                        else ""
-                    )
-
-                    # Custom model: always enabled in Advanced mode
-                    self.custom_model_input.disabled = False
-
-                    # Base URL: enabled when custom model is entered
-                    self.base_url_input.disabled = not custom_model
-
-                    # API Key: enabled when custom model is entered
-                    self.api_key_input.disabled = not custom_model
-                except Exception:
-                    pass
-
-            # Memory Condensation: enabled when API key is provided
-            # or when there's an existing API key in the agent
-            self.memory_select.disabled = not (api_key or self._has_existing_api_key())
-
-            # Advanced LLM settings (timeout, max_tokens, max_size):
-            # Only enabled in Advanced mode and when API key is provided
-            advanced_settings_enabled = is_advanced_mode and (
-                api_key or self._has_existing_api_key()
+            has_model = (
+                self.model_select.value not in (NoSelection, "", None)
+                and self.fetched_models  # Must have fetched models
             )
-            self.timeout_input.disabled = not advanced_settings_enabled
-            self.max_tokens_input.disabled = not advanced_settings_enabled
-            self.max_size_input.disabled = not advanced_settings_enabled
+
+            # Fetch button enabled if proxy URL is set
+            self.fetch_models_button.disabled = not proxy_url
+
+            # Model select enabled after fetch
+            self.model_select.disabled = not has_model
+
+            # API Key: always enabled (needed for fetch)
+            self.api_key_input.disabled = False
+
+            # Advanced settings enabled if model is selected
+            self.timeout_input.disabled = not has_model
+            self.max_tokens_input.disabled = not has_model
+            self.max_size_input.disabled = not has_model
+
+            # Memory Condensation enabled if model is selected
+            self.memory_select.disabled = not has_model
 
         except Exception:
             # Silently handle errors during initialization
@@ -384,36 +306,72 @@ class SettingsScreen(ModalScreen):
             self.message_widget.remove_class("error_message")
             self.message_widget.remove_class("success_message")
 
-    def on_select_changed(self, event: Select.Changed) -> None:
-        """Handle select widget changes."""
-        if event.select.id == "mode_select":
-            self.is_advanced_mode = event.value == "advanced"
-            self._update_advanced_visibility()
-            self._update_field_dependencies()
-            self._clear_message()
-        elif event.select.id == "provider_select":
-            if event.value is not NoSelection:
-                self._update_model_options(str(event.value))
-            self._update_field_dependencies()
-            self._clear_message()
-        elif event.select.id == "model_select":
-            self._update_field_dependencies()
-            self._clear_message()
-
-    def on_input_changed(self, event: Input.Changed) -> None:
-        """Handle input field changes."""
-        if event.input.id in ["custom_model_input", "api_key_input"]:
-            self._update_field_dependencies()
-            self._clear_message()
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
+    async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
         if event.button.id == "save_button":
             self._save_settings()
         elif event.button.id == "cancel_button":
             self._handle_cancel()
-        elif event.button.id == "langfuse_button":
-            self._open_langfuse_config()
+        elif event.button.id == "fetch_models_button":
+            await self._on_fetch_models_button_pressed(event)
+
+    async def _on_fetch_models_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle fetch models button press."""
+        proxy_url = self.proxy_url_input.value
+        if not proxy_url:
+            self._show_message("Please enter Proxy URL first", is_error=True)
+            return
+
+        self._show_message("Fetching models...", is_error=False)
+        self.fetch_models_button.disabled = True
+
+        try:
+            # Test connection first
+            connection_result = await test_proxy_connection(proxy_url)
+            if not connection_result.get("success"):
+                self._show_message(
+                    f"Connection failed: {connection_result.get('error', 'Unknown')}",
+                    is_error=True,
+                )
+                return
+
+            # Fetch models
+            self.fetched_models = await fetch_available_models(
+                proxy_url, self.api_key_input.value or None
+            )
+
+            if not self.fetched_models:
+                self._show_message(
+                    "No models found. Check LiteLLM Proxy configuration.",
+                    is_error=True,
+                )
+                return
+
+            # Update model select
+            options = [(model, model) for model in self.fetched_models]
+            self.model_select.set_options(options)
+            self.model_select.disabled = False
+
+            self._show_message(
+                f"Successfully fetched {len(self.fetched_models)} models",
+                is_error=False,
+            )
+
+        except Exception as e:
+            self._show_message(f"Error fetching models: {str(e)}", is_error=True)
+        finally:
+            self.fetch_models_button.disabled = False
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Handle input field changes."""
+        if event.input.id == "proxy_url_input":
+            # Clear fetched models when proxy URL changes
+            self.fetched_models = []
+            self.model_select.set_options([("Fetch models first", "")])
+            self.model_select.disabled = True
+        elif event.input.id == "api_key_input":
+            self._update_field_dependencies()
+            self._clear_message()
 
     def action_cancel(self) -> None:
         """Handle escape key to cancel settings."""
@@ -426,46 +384,40 @@ class SettingsScreen(ModalScreen):
         if self.on_first_time_settings_cancelled and self.is_initial_setup:
             self.on_first_time_settings_cancelled()
 
-    def _open_langfuse_config(self) -> None:
-        """Open Langfuse configuration modal."""
-        # Don't use callback to avoid Textual screen dismiss issues
-        # Just push the screen without callback
-        self.app.push_screen(LangfuseConfigModal())
-
     def _save_settings(self) -> None:
         """Save the current settings."""
+        proxy_url = self.proxy_url_input.value
+        model = self.model_select.value
+        api_key_input = self.api_key_input.value
 
-        raw_mode = self.mode_select.value
-
-        if raw_mode not in ("basic", "advanced"):
-            self._show_message("Please select a settings mode", is_error=True)
+        # Validate required fields
+        if not proxy_url:
+            self._show_message("Please enter Proxy URL", is_error=True)
             return
 
-        mode = cast(Literal["basic", "advanced"], raw_mode)
+        if not model or model in (NoSelection, ""):
+            self._show_message("Please select a model", is_error=True)
+            return
 
-        provider_value = self.provider_select.value
-        model = self.model_select.value
-        custom_model = self.custom_model_input.value
-        base_url = self.base_url_input.value
-        # Gather timeout input (may be empty string)
-        timeout_input_value = self.timeout_input.value
+        if not api_key_input:
+            self._show_message("Please enter API Key", is_error=True)
+            return
+
+        # Create form data (reuse existing SettingsFormData)
         form_data = SettingsFormData(
-            mode=mode,
-            provider=(
-                None if isinstance(provider_value, NoSelection) else str(provider_value)
-            ),
-            model=None if isinstance(model, NoSelection) else str(model),
-            custom_model=None if not custom_model else str(custom_model),
-            base_url=None if not base_url else str(base_url),
-            api_key_input=self.api_key_input.value,
+            mode="advanced",  # Always advanced mode now
+            provider=None,  # Not used
+            model=model,
+            custom_model=model,  # Use model as custom_model
+            base_url=proxy_url,
+            api_key_input=api_key_input,
             memory_condensation_enabled=bool(self.memory_select.value),
-            timeout=timeout_input_value,
+            timeout=self.timeout_input.value,
             max_tokens=self.max_tokens_input.value,
             max_size=self.max_size_input.value,
         )
 
-        # Preserve existing timeout if user entered an invalid value
-        # (validator returned None)
+        # Preserve existing timeout if user entered invalid value
         if form_data.timeout is None and self.current_agent:
             form_data.timeout = getattr(self.current_agent.llm, "timeout", None)
         result = save_settings(form_data, self.current_agent)
@@ -487,7 +439,6 @@ class SettingsScreen(ModalScreen):
                 base_settings = CliSettings.load()
 
                 # Update the nested critic settings
-
                 updated_critic = base_settings.critic.model_copy(
                     update=critic_tab.get_updated_fields()
                 )

@@ -49,21 +49,61 @@ uv run openhands
 
 ---
 
-### 3. **Langfuse Integration**
+### 3. **Langfuse Integration (via LiteLLM Proxy)**
+
+**Architecture:**
+```
+OpenHands CLI → LiteLLM Proxy (:4000) → Langfuse Callback → Langfuse Web (:3000)
+                       ↓
+                 LLM Provider (Anthropic, OpenAI, etc.)
+```
+
+Langfuse tracing is handled **server-side** by LiteLLM Proxy callbacks. The proxy sends traces to Langfuse using `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` (project-level API keys created in Langfuse UI).
+
+**Metadata for Local Proxy:**
+
+`openhands_cli/utils.py` → `should_set_litellm_extra_body()` controls whether metadata (component, session, tags) is sent to the proxy. By default it only sends metadata for `openhands/` models or cloud proxy URLs. For local LiteLLM proxy, set:
+
+```bash
+# In .env
+OPENHANDS_SEND_LLM_METADATA=true
+```
+
+This makes OpenHands send rich metadata (tags like `app:openhands-cli`, `model:...`, `session_id`, `trace_user_id`) to the local proxy, which Langfuse then displays in traces.
 
 **Files:**
+- `openhands_cli/utils.py` - `should_set_litellm_extra_body()` + `get_llm_metadata()` — metadata generation + env var opt-in
 - `openhands_cli/stores/langfuse_store.py` - Config storage
 - `openhands_cli/stores/agent_store.py` - Enable callback
 - `openhands_cli/tui/modals/settings/langfuse_config.py` - Settings UI
 
-**Config:**
-- Server: `http://localhost:3000` (self-hosted v2.95.11)
-- SDK: `langfuse==2.50.0` (downgraded từ 3.x để compatible với LiteLLM)
-- UI: Settings → "📊 Langfuse Tracing" button
+**Setup Steps:**
 
-**Status:** ✅ Working - Traces xuất hiện trong Langfuse UI
+1. **Start services:** `docker compose up -d` (from project root)
+2. **Access Langfuse UI:** http://localhost:3000
+3. **Get API Keys:** Settings → API Keys → Copy Public & Secret Key
+4. **Set in `.env`:**
+   ```
+   LANGFUSE_PUBLIC_KEY=pk-lf-...
+   LANGFUSE_SECRET_KEY=sk-lf-...
+   OPENHANDS_SEND_LLM_METADATA=true
+   ```
+5. **Verify:** Chat with agent, then check Langfuse Traces — should show metadata tags
 
-**Security:** ✅ Skill content KHÔNG bị leak vào Langfuse
+**Troubleshooting:**
+
+| Issue | Solution |
+|-------|----------|
+| No traces in Langfuse | Check `docker compose logs litellm-proxy \| grep langfuse` |
+| Traces but no metadata | Verify `OPENHANDS_SEND_LLM_METADATA=true` in `.env` |
+| Connection failed | Verify `langfuse-web` is on both Docker networks (default + unit-test-agent-network) |
+| Missing cost data | Ensure model name matches Langfuse pricing database |
+
+**Privacy & Security:**
+- ✅ Data stays local (self-hosted Langfuse)
+- ✅ API keys stored on proxy only, not on clients
+- ✅ No data sent to external services
+- ⚠️ LLM content still sent to Langfuse (tracing includes prompts/responses)
 
 ---
 
@@ -242,9 +282,22 @@ TTY_INTERACTIVE=1 uv run openhands
 
 | File | Purpose |
 |------|---------|
-| `AGENTS.md` | This file - developer reference |
+| `AGENTS.md` | This file - complete developer reference |
 | `INSTRUCTIONS_GUIDE.md` | User guide for skills |
-| `AGENTS_CUSTOMIZATION.md` | Detailed customization docs |
+
+---
+
+## 📊 Performance Metrics
+
+| Metric | Value |
+|--------|-------|
+| Dev Skills Count | 9 |
+| Always-Active Skills | 3 |
+| Trigger-Based Skills | 6 |
+| Build Time (first) | 3-5 min |
+| Build Time (subsequent) | 1-2 min |
+| Binary Size | ~50-100 MB |
+| TUI Startup Time | ~2-3 sec |
 
 ---
 

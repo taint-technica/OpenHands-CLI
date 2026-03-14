@@ -12,6 +12,8 @@ from openhands.sdk.security.confirmation_policy import (
 )
 from openhands.sdk.security.llm_analyzer import LLMSecurityAnalyzer
 from openhands_cli.acp_impl.confirmation import CONFIRMATION_MODES, ConfirmationMode
+from openhands_cli.instructions.dev_skills import ANALYSIS_ARCHITECT_AND_FRAMEWORK
+from openhands_cli.locations import get_work_dir
 from openhands_cli.shared.slash_commands import (
     parse_slash_command as parse_slash_command,
 )
@@ -58,6 +60,43 @@ def get_available_slash_commands() -> list[AvailableCommand]:
                 root=UnstructuredCommandInput(
                     hint="File path | Folder path | Module name | Service name",
                 ),
+            ),
+        ),
+        AvailableCommand(
+            name="code_analysis",
+            description="Analyze code for unit test friendliness",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(
+                    hint="File path | Folder path | Module name (optional)",
+                ),
+            ),
+        ),
+        AvailableCommand(
+            name="configure_sonar_scanner",
+            description="Create a Sonar Scanner configuration file",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
+            ),
+        ),
+        AvailableCommand(
+            name="run_unit_test",
+            description="Run Unit Test for Sonar report",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
+            ),
+        ),
+        AvailableCommand(
+            name="post_sonarqube_server",
+            description="Posting Unit Test result and source coverage to SonarQube server",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
+            ),
+        ),
+        AvailableCommand(
+            name="generate_single_unit_test",
+            description="Generate Unit Test for a single file",
+            input=AvailableCommandInput(
+                root=UnstructuredCommandInput(hint="No arguments"),
             ),
         ),
     ]
@@ -230,13 +269,103 @@ def handle_confirm_argument(
     return get_confirm_success_text(mode), mode
 
 
+CODE_ANALYSIS_SKILL_CONTENT = """
+You are an expert software engineer specializing in testable code design and TDD.
+
+Analyze the following code and evaluate how "unit test friendly" it is.
+
+## Evaluation Criteria
+
+Check for these properties and flag issues:
+
+**1. Single Responsibility**
+- Does each function/class do ONE thing?
+- Are there functions that mix business logic with I/O, logging, or side effects?
+
+**2. Dependency Injection**
+- Are dependencies (DB, HTTP clients, services) injected rather than hardcoded?
+- Are there hidden dependencies (globals, singletons, static calls)?
+
+**3. Pure Functions**
+- Do functions return predictable outputs for the same inputs?
+- Do functions have hidden side effects (mutating globals, writing files, etc.)?
+
+**4. Seams & Interfaces**
+- Are there clear boundaries where mocks/stubs can be inserted?
+- Are concrete classes used instead of interfaces/abstractions?
+
+**5. Testable State**
+- Is internal state accessible or observable for assertions?
+- Are functions too deeply nested to test individual units?
+
+**6. Avoid Hard Dependencies**
+- new Date(), Math.random(), file system, network calls inside logic?
+- Environment variables read directly inside functions?
+
+**7. Function Size & Complexity**
+- Are functions small and focused (< ~20 lines)?
+- Is cyclomatic complexity high (many branches/conditions)?
+
+## Output Format
+
+**1. Overall Score**:
+- X/10 (unit test friendliness)
+
+**2. Summary**:
+- 2-3 sentence overview
+
+**3. Issues Found**:
+List each problem with:
+- Location (function/class name)
+- Problem description
+- Severity: High | Medium | Low
+
+**4. Refactored Example**:
+- Show a corrected version of the worst offender
+
+**5. Quick Wins**:
+- Top 3 changes that would most improve testability
+
+## Code to Analyze:
+
+`Entire project`
+"""
+
+CODE_ANALYSIS_ASK_TARGET_INSTRUCTION = (
+    "IMPORTANT: Do NOT analyze any code yet. Do NOT explore or read the project.\n\n"
+    "The user activated the /code_analysis command but didn't specify a target.\n\n"
+    "Your ONLY task right now is to ask the user which specific file, folder, or module "
+    "they want to analyze for unit test friendliness.\n\n"
+    "Provide these examples:\n"
+    "  - A specific file: src/services/auth.py\n"
+    "  - A folder: src/services/\n"
+    "  - A module or class name: AuthService\n\n"
+    "Wait for the user's response. Do NOT proceed until they provide a target or say they want to cancel."
+)
+
+
+def code_analysis(argument: str) -> str | None:
+    """Handle /code_analysis command.
+
+    Returns:
+        Analysis instruction string if target is provided,
+        None if no target (caller should redirect to conversation flow).
+    """
+    target = argument.strip()
+    if not target:
+        return None
+    return f"Analysis target: {target}\n\n{CODE_ANALYSIS_SKILL_CONTENT}"
+
+
 def handle_analysis_architect_and_framework(
     argument: str,
 ) -> str:
     """Handle /analysis_architect_and_framework command and return response.
 
     This command activates the Analysis Architect & Framework skill to analyze
-    code architecture and framework structure.
+    code architecture and framework structure. The instruction content comes from
+    the hardcoded ANALYSIS_ARCHITECT_AND_FRAMEWORK skill in dev_skills.py
+    (protected by Nuitka compilation).
 
     Args:
         argument: Command argument (file path, folder path, module name, etc.)
@@ -244,39 +373,35 @@ def handle_analysis_architect_and_framework(
     Returns:
         Response text to send to the user
     """
-    if not argument or not argument.strip():
-        return (
-            "Analysis Architect & Framework\n\n"
-            "This tool helps analyze software architecture and framework structures.\n\n"
-            "Usage: /analysis_architect_and_framework <target>\n\n"
-            "Examples:\n"
-            "  /analysis_architect_and_framework src/main.py\n"
-            "  /analysis_architect_and_framework ./services/user_service\n"
-            "  /analysis_architect_and_framework auth_module\n\n"
-            "Supported analysis levels:\n"
-            "  - Single File: Analyze structure of a single code file\n"
-            "  - Multi Files: Analyze relationships between multiple files\n"
-            "  - Module: Analyze complete functional modules\n"
-            "  - Service: Analyze service-oriented architecture components\n"
-            "  - Router: Analyze routing and request handling patterns\n"
-            "  - Domain: Analyze domain-driven design implementation\n\n"
-            "Please specify a file, folder, module, or service to analyze."
-        )
 
-    # Return a message indicating the analysis will be performed
-    target = argument.strip()
-    return (
-        f"Starting Architecture Analysis for: {target}\n\n"
-        "I will analyze the code structure, dependencies, design patterns, "
-        "and architectural decisions. This includes:\n\n"
-        "1. **Structure Analysis**: Understanding code organization and responsibilities\n"
-        "2. **Dependency Mapping**: Identifying imports, dependencies, and interactions\n"
-        "3. **Pattern Detection**: Recognizing design patterns and architectural styles\n"
-        "4. **Framework Analysis**: Examining framework-specific configurations and patterns\n"
-        "5. **Documentation**: Generating architecture documentation and recommendations\n\n"
-        f"Analyzing target: {target}\n\n"
-        "Please wait while I examine the codebase..."
-    )
+    target = argument.strip() if argument.strip() else get_work_dir()
+    skill_content = """
+You are a Senior Architect with 15+ years of experience
+
+Your task is to analyze the entire project source code, to provide the output to architect.md :
+
+## 1. Architecture Overview
+
+```
+Explain the architecture of this project.
+Describe the folder structure, main components, how they interact with each other.
+Overall data flow from input to output.
+```
+
+## 2. Framework Overview
+
+```
+What frameworks are used in this project.
+What design patterns are used.
+```
+
+## 3. Modules Overview
+
+```
+Explain what modules are consisted in the project, basic functions for each module.
+    ```
+"""
+    return f"Analysis target: {target}\n\n{skill_content}"
 
 
 def get_unknown_command_text(command: str) -> str:
@@ -294,4 +419,32 @@ def get_unknown_command_text(command: str) -> str:
         f"Unknown command: /{command}\n\n"
         f"Available commands: {command_list}\n"
         f"Use /help for more information."
+    )
+
+
+def get_help_configure_sonar_scanner() -> str:
+    return (
+        "Create a Sonar Scanner configuration file\n\n"
+        "This tool helps generating sonar-project.properties file for the current project.\n\n"
+    )
+
+
+def get_help_run_unit_test() -> str:
+    return (
+        "Run Unit Test for Sonar report\n\n"
+        "This tool helps running unit test for entire project with coverage reports.\n\n"
+    )
+
+
+def get_help_post_sonarqube_server() -> str:
+    return (
+        "Posting Unit Test result and source coverage to SonarQube server\n\n"
+        "This tool helps posting unit test result and source coverage to a remote SonarQube server.\n\n"
+    )
+
+
+def get_help_generate_single_unit_test() -> str:
+    return (
+        "Generate Unit Test for a single file \n\n"
+        "This tool helps generating Unit Test code for a single file.\n\n"
     )

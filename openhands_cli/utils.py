@@ -4,6 +4,7 @@ import json
 import os
 import platform
 import re
+from collections import defaultdict
 from argparse import Namespace
 from pathlib import Path
 from typing import Any
@@ -104,6 +105,10 @@ def should_set_litellm_extra_body(model_name: str, base_url: str | None = None) 
     if base_url and _LLM_PROXY_PATTERN.match(base_url):
         return True
 
+    # Support local LiteLLM proxy via env var opt-in
+    if os.environ.get("OPENHANDS_SEND_LLM_METADATA", "").lower() == "true":
+        return True
+
     return False
 
 
@@ -143,6 +148,7 @@ def get_llm_metadata(
         pass
 
     metadata = {
+        "trace_name": f"openhands-cli/{llm_type}",
         "trace_version": openhands_sdk_version,
         "tags": [
             "app:openhands-cli",
@@ -248,3 +254,42 @@ def json_callback(event: Event) -> None:
     pretty_json = json.dumps(data, indent=2, sort_keys=True)
     print("--JSON Event--")
     print(pretty_json)
+
+def get_current_wd() -> Path:
+    cwd = Path.cwd()
+    return cwd
+
+def count_files_by_type(directory) -> dict :
+    file_type_counts = defaultdict(int)
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            _, ext = os.path.splitext(file)
+            ret_ext = ext.lower()[1:] if ext else "no_extension"
+            file_type_counts[ret_ext] += 1
+    
+    return dict(file_type_counts)
+
+def get_project_type(count_types: dict) -> int:
+    from openhands_cli.constants import CustomConstants
+    python_count = count_types.get("py", 0)
+    java_count = count_types.get("java", 0)
+
+    if python_count >= java_count :
+        return  CustomConstants.PROJECT_TYPE_PYTHON
+    elif java_count > 0 :
+        return  CustomConstants.PROJECT_TYPE_JAVA
+    return  CustomConstants.PROJECT_TYPE_UNKNOWN
+
+def get_shell_type() -> int:
+    import psutil
+    import os
+    from openhands_cli.constants import CustomConstants
+
+    parent = psutil.Process(os.getppid()).name().lower()
+
+    if "powershell" in parent:
+        return  CustomConstants.SHELL_TYPE_PS
+    elif "cmd" in parent:
+        return  CustomConstants.SHELL_TYPE_CMD
+    else:        
+        return  CustomConstants.SHELL_TYPE_OTHER

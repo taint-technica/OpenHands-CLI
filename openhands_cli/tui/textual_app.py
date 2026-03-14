@@ -45,7 +45,7 @@ from textual import events, getters, on
 from textual.app import App, ComposeResult, SystemCommand
 from textual.containers import Horizontal
 from textual.screen import Screen
-from textual.widgets import Footer, Input, TextArea
+from textual.widgets import Footer, Input, Static, TextArea
 from textual_autocomplete import AutoComplete
 
 from openhands.sdk import BaseConversation
@@ -77,6 +77,7 @@ from openhands_cli.tui.core.conversation_manager import SwitchConfirmed
 from openhands_cli.tui.core.runner_factory import RunnerFactory
 from openhands_cli.tui.modals import SettingsScreen
 from openhands_cli.tui.modals.exit_modal import ExitConfirmationModal
+from openhands_cli.tui.panels.code_tree_panel import CodeTreeSidePanel
 from openhands_cli.tui.panels.history_side_panel import HistorySidePanel
 from openhands_cli.tui.panels.mcp_side_panel import MCPSidePanel
 from openhands_cli.tui.panels.plan_side_panel import PlanSidePanel
@@ -101,6 +102,7 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         ("ctrl+q", "request_quit", "Quit the application"),
         ("ctrl+c", "request_quit", "Quit the application"),
         ("ctrl+d", "request_quit", "Quit the application"),
+        ("ctrl+t", "toggle_code_tree", "Toggle code tree panel"),
     ]
 
     input_field: getters.query_one[InputField] = getters.query_one(InputField)
@@ -209,6 +211,8 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
 
         self.plan_panel: PlanSidePanel = PlanSidePanel(self)
 
+        self.code_tree_panel: CodeTreeSidePanel | None = None
+
         # Register the custom theme
         self.register_theme(OPENHANDS_THEME)
 
@@ -269,6 +273,11 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             "Plan",
             "View agent plan",
             lambda: self.plan_panel.toggle(),
+        )
+        yield SystemCommand(
+            "Code Tree",
+            "Toggle project code tree panel",
+            self.action_toggle_code_tree,
         )
         yield SystemCommand("Settings", "Configure settings", self.action_open_settings)
 
@@ -393,6 +402,105 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             env_overrides_enabled=self.env_overrides_enabled,
         )
         self.push_screen(settings_screen)
+
+    def action_generate_single_unit_test(self, project_type: int) -> None:
+        """Action to open the sonar scanner settings screen."""
+        from openhands_cli.tui.modals import GenUnitTestFileSettings
+        # Check if conversation is running via ConversationContainer
+        if self.conversation_state.running:
+            self.notify(
+                "Settings are not available while a conversation is running. "
+                "Please wait for the current conversation to complete.",
+                severity="warning",
+                timeout=5.0,
+            )
+            return
+        
+        gen_utfile_screen = GenUnitTestFileSettings(project_type)
+        self.push_screen(gen_utfile_screen, self.handle_generate_single_unit_test_result)
+        return
+
+    def action_open_sonar_scanner_settings(self, project_type: int) -> None:
+        """Action to open the sonar scanner settings screen."""
+        from openhands_cli.tui.modals import SonarScannerSettings
+        # Check if conversation is running via ConversationContainer
+        if self.conversation_state.running:
+            self.notify(
+                "Settings are not available while a conversation is running. "
+                "Please wait for the current conversation to complete.",
+                severity="warning",
+                timeout=5.0,
+            )
+            return
+
+        # Open the settings screen for existing users
+        settings_screen = SonarScannerSettings(project_type)
+        self.push_screen(settings_screen, self.handle_sonar_scanner_settings_result)
+        return
+
+    def handle_generate_single_unit_test_result(self, result: dict | None) -> None:
+        from openhands_cli.tui.widgets.input_area import InputAreaContainer
+        from openhands_cli.tui.core.commands import generate_unit_test_gen_script
+        input_area = self.query_one(InputAreaContainer)
+        scroll_view = input_area.scroll_view        
+        if result:
+            self.notify(f"Saving for project {result["project_type"]}: {result["src_file_name"]}, \
+                        expectation coverage: {result["coverage_expect"]}, num iteration: {result["num_iteration"]}")
+            scroll_view.mount(Static(f"Saved: {result}"))
+            generate_unit_test_gen_script(scroll_view, result)
+        else:
+            self.notify("Cancelled — no changes made")
+            scroll_view.mount(Static("Cancelled"))
+
+        return 
+    
+    def handle_sonar_scanner_settings_result(self, result: dict | None) -> None:
+        from openhands_cli.tui.widgets.input_area import InputAreaContainer
+        from openhands_cli.tui.core.commands import generate_py_scanner_config
+
+        input_area = self.query_one(InputAreaContainer)
+        scroll_view = input_area.scroll_view        
+        if result:
+            self.notify(f"Saving for project {result["project_type"]}: {result["project_name"]}, \
+                        inclusive path: {result["inclusive_path"]}, exclusive path: {result["exclusive_path"]}")
+            scroll_view.mount(Static(f"Saved: {result}"))
+            generate_py_scanner_config(scroll_view, result)
+        else:
+            self.notify("Cancelled — no changes made")
+            scroll_view.mount(Static("Cancelled"))
+
+    def action_run_unit_test(self, project_type: int) -> None:
+        from openhands_cli.tui.widgets.input_area import InputAreaContainer
+        from openhands_cli.tui.core.commands import run_unit_test_progress
+
+        if self.conversation_state.running:
+            self.notify(
+                "Unit test are not available while a conversation is running. "
+                "Please wait for the current conversation to complete.",
+                severity="warning",
+                timeout=5.0,
+            )
+            return
+
+        input_area = self.query_one(InputAreaContainer)
+        scroll_view = input_area.scroll_view        
+        run_unit_test_progress(scroll_view, project_type)
+        return
+
+    def action_post_sonarqube_server(self, project_type: int) -> None:        
+        from openhands_cli.tui.core.commands import post_sonarqube_server_progress
+
+        if self.conversation_state.running:
+            self.notify(
+                "Posting SonarQube Server are not available while a conversation is running. "
+                "Please wait for the current conversation to complete.",
+                severity="warning",
+                timeout=5.0,
+            )
+            return
+
+        post_sonarqube_server_progress(self)
+        return
 
     def _notify_restart_required(self) -> None:
         """Notify user that CLI restart is required for agent settings changes.
@@ -617,6 +725,10 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             self,
             current_conversation_id=self.conversation_id,
         )
+
+    def action_toggle_code_tree(self) -> None:
+        """Toggle the code tree side panel."""
+        CodeTreeSidePanel.toggle(self)
 
     # =========================================================================
     # UI Event Handlers - Handle events from ConversationManager

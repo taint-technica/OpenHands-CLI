@@ -9,7 +9,7 @@ JAVA_SCRIPT_TEMPLATE = """\
 #!/bin/bash
 
 ADDITIONAL_PROMPT=""
-[ -f "architect.md" ] && ADDITIONAL_PROMPT="$(cat architect.md)"
+[ -f "ARCHITECTURE.md" ] && ADDITIONAL_PROMPT="$(cat ARCHITECTURE.md)"
 
 export JAVA_HOME="{{JAVA_HOME}}"
 export PATH="/usr/bin:/usr/local/bin:$PATH"

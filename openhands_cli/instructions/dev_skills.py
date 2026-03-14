@@ -15,17 +15,6 @@ The CLI will automatically scan and load user skills at runtime.
 
 from openhands.sdk.context import Skill
 from openhands.sdk.context.skills.trigger import KeywordTrigger
-from openhands_cli.instructions.utgen import (
-    CLI_ARGUMENTS,
-    JAVA_REFACTOR_GUIDE,
-    JAVA_SCRIPT_TEMPLATE,
-    JAVA_WORKFLOW,
-    KEPLOY_KEYWORDS,
-    OVERALL_WORKFLOW,
-    PYTHON_REFACTOR_GUIDE,
-    PYTHON_SCRIPT_TEMPLATE,
-    PYTHON_WORKFLOW,
-)
 
 
 # ============================================================================
@@ -215,14 +204,14 @@ Responses (Python), or WireMock (Java).
 ANALYSIS_ARCHITECT_AND_FRAMEWORK = Skill(
     name="analysis_architect_and_framework",
     content="""
-You are a Senior Architect with 15+ years of experience
+You are a Senior Architect with 15+ years of experience 
 
 Your task is to analyze the entire project source code, to provide the output to architect.md :
 
 ## 1. Architecture Overview
 
 ```
-Explain the architecture of this project.
+Explain the architecture of this project. 
 Describe the folder structure, main components, how they interact with each other.
 Overall data flow from input to output.
 ```
@@ -255,52 +244,6 @@ Explain what modules are consisted in the project, basic functions for each modu
     description="Analysis Architect & Framework - Comprehensive guide for analyzing software architecture and framework structures",
 )
 
-KEPLOY_GEN_UNIT_TEST = Skill(
-    name="keploy_gen_unit_test",
-    content=f"""
-# Keploy Unit Test Generation for Ubuntu
-
-You are an expert in generating unit tests using Keploy AI-powered tool on Ubuntu systems.
-
-{CLI_ARGUMENTS}
-
-## Script Templates
-
-### Python Project Script Template (Gen_UnitTest.sh)
-
-{PYTHON_SCRIPT_TEMPLATE}
-
-### Java Project Script Template (Gen_UnitTest.sh)
-
-{JAVA_SCRIPT_TEMPLATE}
-
-## Project Setup
-
-{PYTHON_WORKFLOW}
-
-{JAVA_WORKFLOW}
-
-## Workflow Steps
-
-{OVERALL_WORKFLOW}
-
-## Refactoring Guidelines
-
-### Python Projects
-
-{PYTHON_REFACTOR_GUIDE}
-
-### Java Projects
-
-{JAVA_REFACTOR_GUIDE}
-""",
-    trigger=KeywordTrigger(
-        type="keyword",
-        keywords=KEPLOY_KEYWORDS,
-    ),
-    description="Keploy AI-powered unit test generation for Python and Java projects on Ubuntu",
-)
-
 # ============================================================================
 # HELPER FUNCTION
 # ============================================================================
@@ -321,13 +264,12 @@ def get_dev_skills() -> list[Skill]:
         >>> from openhands_cli.instructions import get_dev_skills
         >>> skills = get_dev_skills()
         >>> len(skills)
-        4
+        9
     """
     return [
         # SECURITY SKILLS (HIGHEST PRIORITY - MUST BE FIRST)
         ANTI_LEAK_INSTRUCTIONS,
         # Always-active skills (go into REPO_CONTEXT)
-        # GENERATE_UNIT_TEST,
+        GENERATE_UNIT_TEST,
         ANALYSIS_ARCHITECT_AND_FRAMEWORK,
-        KEPLOY_GEN_UNIT_TEST,
     ]

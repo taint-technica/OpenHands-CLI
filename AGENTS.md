@@ -65,75 +65,6 @@ uv run openhands
 
 **Security:** ✅ Skill content KHÔNG bị leak vào Langfuse
 
-**Architecture:**
-```
-OpenHands CLI → LiteLLM → Langfuse Callback → Local Langfuse Server
-                     ↓
-               LLM Provider (OpenAI, Anthropic, etc.)
-```
-
-**Setup Steps:**
-
-1. **Start Langfuse Server:**
-   ```bash
-   docker-compose up -d langfuse-web langfuse-worker
-   ```
-
-2. **Access Langfuse UI:**
-   ```
-   http://localhost:3000
-   Default credentials: Check docker-compose.env or set via env vars
-   ```
-
-3. **Get API Keys:**
-   - Go to Settings → API Keys
-   - Create new project or use default
-   - Copy Public Key & Secret Key
-
-4. **Configure in OpenHands CLI:**
-   - Run: `uv run openhands`
-   - Open Settings (gear icon)
-   - Click "📊 Langfuse Tracing"
-   - Enter credentials
-   - Click "Test Connection"
-   - Click "Save"
-
-5. **Verify Tracing:**
-   - Chat with agent: "Write a hello world function"
-   - Check Langfuse UI: Trace should appear within seconds
-
-**Implementation Details:**
-```python
-# When Langfuse is enabled:
-import litellm
-
-# Set environment variables
-os.environ["LANGFUSE_HOST"] = "http://localhost:3000"
-os.environ["LANGFUSE_PUBLIC_KEY"] = "pk-lf-..."
-os.environ["LANGFUSE_SECRET_KEY"] = "sk-lf-..."
-
-# Enable callbacks
-litellm.success_callback = ["langfuse"]
-litellm.failure_callback = ["langfuse"]
-
-# All subsequent LLM calls are automatically traced
-```
-
-**Troubleshooting:**
-
-| Issue | Solution |
-|-------|----------|
-| Connection failed | Check Langfuse server: `docker-compose ps` |
-| No traces appearing | Verify API keys are correct in Langfuse UI |
-| High latency | Check network to Langfuse server; consider async mode |
-| Missing cost data | Ensure model name matches Langfuse pricing database |
-
-**Privacy & Security:**
-- ✅ Data stays local (self-hosted Langfuse)
-- ✅ API keys stored encrypted in config file
-- ✅ No data sent to external services
-- ⚠️ LLM content still sent to Langfuse (tracing includes prompts/responses)
-
 ---
 
 ### 4. **Build với Nuitka**
@@ -186,35 +117,6 @@ OpenHands-CLI/
 ├── AGENTS.md                      # ← This file
 └── INSTRUCTIONS_GUIDE.md          # ← User documentation
 ```
-
----
-
-### 4. **Keploy Unit Test Generation**
-
-**File:** `tests/test_utils.py`
-
-**Task:** Generate unit tests for `openhands_cli/utils.py` using Keploy AI-powered tool
-
-**Configuration:**
-- Expected coverage: 85% (✅ Achieved: 88%)
-- Max iterations: 5
-- Model: claude-haiku-4-5
-- LLM Base URL: http://localhost:4000 (local LiteLLM proxy)
-
-**Results:**
-- ✅ Tests generated: 54 test cases
-- ✅ Coverage achieved: 88% (target: 85%)
-- ✅ All tests passing: 54/54 PASSED
-- ✅ Execution time: 0.09s
-
-**Test Coverage Details:**
-- `abbreviate_number()` - 12 parametrized test cases ✅
-- `format_cost()` - 7 parametrized test cases ✅
-- `get_os_description()` - 8 test cases (all platforms) ✅
-- `should_set_litellm_extra_body()` - 15 parametrized test cases ✅
-- `extract_text_from_message_content()` - 6 test cases ✅
-- `get_llm_metadata()` - 2 test cases ✅
-- `create_seeded_instructions_from_args()` - 4 test cases ✅
 
 ---
 
@@ -311,22 +213,9 @@ TTY_INTERACTIVE=1 uv run openhands
 
 | File | Purpose |
 |------|---------|
-| `AGENTS.md` | This file - complete developer reference |
+| `AGENTS.md` | This file - developer reference |
 | `INSTRUCTIONS_GUIDE.md` | User guide for skills |
-
----
-
-## 📊 Performance Metrics
-
-| Metric | Value |
-|--------|-------|
-| Dev Skills Count | 9 |
-| Always-Active Skills | 3 |
-| Trigger-Based Skills | 6 |
-| Build Time (first) | 3-5 min |
-| Build Time (subsequent) | 1-2 min |
-| Binary Size | ~50-100 MB |
-| TUI Startup Time | ~2-3 sec |
+| `AGENTS_CUSTOMIZATION.md` | Detailed customization docs |
 
 ---
 

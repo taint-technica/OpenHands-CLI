@@ -58,6 +58,10 @@ from openhands_cli.acp_impl.slash_commands import (
     handle_confirm_argument,
     parse_slash_command,
     validate_confirmation_mode,
+    get_help_configure_sonar_scanner,
+    get_help_run_unit_test,
+    get_help_post_sonarqube_server,
+    get_help_generate_single_unit_test
 )
 from openhands_cli.acp_impl.utils import (
     convert_acp_mcp_servers_to_agent_format,
@@ -511,14 +515,23 @@ class BaseOpenHandsACPAgent(ACPAgent, ABC):
                 logger.info(f"Executing slash command: /{command} {argument}")
 
                 # Execute the slash command
-                if command == "help":
-                    response_text = create_help_text()
-                elif command == "confirm":
-                    response_text = await self._cmd_confirm(session_id, argument)
-                elif command == "analysis_architect_and_framework":
-                    response_text = handle_analysis_architect_and_framework(argument)
-                else:
-                    response_text = get_unknown_command_text(command)
+                match command:
+                    case "help":
+                        response_text = create_help_text()
+                    case "confirm":
+                        response_text = await self._cmd_confirm(session_id, argument)
+                    case "analysis_architect_and_framework":
+                        response_text = handle_analysis_architect_and_framework(argument)
+                    case "configure_sonar_scanner":
+                        response_text = get_help_configure_sonar_scanner()
+                    case "run_unit_test":
+                        response_text = get_help_run_unit_test()
+                    case "post_sonarqube_server":
+                        response_text = get_help_post_sonarqube_server()
+                    case "generate_single_unit_test":
+                        response_text = get_help_generate_single_unit_test()
+                    case _:
+                        response_text = get_unknown_command_text(command)
 
                 # Send response to client
                 await self._conn.session_update(

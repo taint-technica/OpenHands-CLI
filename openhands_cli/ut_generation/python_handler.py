@@ -47,7 +47,7 @@ def build_test_command(source_file_path: str, test_file_path: str) -> str:
     """
     return (
         f"uv run coverage run --include={source_file_path} "
-        f"-m pytest {test_file_path} && uv run coverage xml"
+        f"-m pytest {test_file_path} -o addopts= && uv run coverage xml"
     )
 
 

@@ -11,6 +11,7 @@ PYTHON_SCRIPT_TEMPLATE = """\
 ADDITIONAL_PROMPT=""
 [ -f "ARCHITECTURE.md" ] && ADDITIONAL_PROMPT="$(cat ARCHITECTURE.md)"
 
+unset VIRTUAL_ENV
 [ -d ".venv" ] && source .venv/bin/activate
 
 KEPLOY_ARGS=(

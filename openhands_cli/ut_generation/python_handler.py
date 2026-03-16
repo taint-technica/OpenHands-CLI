@@ -47,13 +47,34 @@ def build_test_command(source_file_path: str, test_file_path: str) -> str:
     """
     return (
         f"uv run coverage run --include={source_file_path} "
-        f"-m pytest {test_file_path} && uv run coverage xml"
+        f"-m pytest {test_file_path} -o addopts= && uv run coverage xml"
     )
 
 
 def get_template_and_placeholders(
-    source_file_path: str, expected_coverage: int, max_iteration: int
+    source_file_path: str,
+    expected_coverage: int,
+    max_iteration: int,
+    api_key: str,
+    llm_base_url: str,
+    model: str,
 ) -> Tuple[str, Dict[str, str]]:
+    """
+    Generate the bash script template and placeholders for Python projects.
+
+    Args:
+        source_file_path: Path to the Java source file under test.
+        expected_coverage: Target coverage percentage.
+        max_iteration: Maximum iterations for Keploy AI to reach the target.
+        api_key: API KEY for LLM.
+        llm_base_url: LLM Base url.
+        model: model name.
+
+    Returns:
+        A tuple containing:
+            - str: The Python-specific bash script template.
+            - dict: A mapping of placeholder keys to their concrete values.
+    """
     test_file_path = derive_test_path(source_file_path)
     test_command = build_test_command(source_file_path, test_file_path)
 
@@ -63,6 +84,9 @@ def get_template_and_placeholders(
         "TEST_COMMAND": test_command,
         "EXPECTED_COVERAGE": str(expected_coverage),
         "MAX_ITERATIONS": str(max_iteration),
+        "API_KEY": api_key,
+        "LLM_BASE_URL": llm_base_url,
+        "MODEL": model,
     }
 
     logger.info(f"Get template and placeholders for {source_file_path}")

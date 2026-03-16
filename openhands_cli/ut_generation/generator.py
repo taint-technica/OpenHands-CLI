@@ -44,8 +44,11 @@ def write_script(content: str, output_path: str = OUTPUT_SCRIPT_NAME) -> None:
 
 def generate_unit_test_script(
     source_file_path: str,
-    expected_coverage: int = 85,
-    max_iteration: int = 5,
+    expected_coverage: int,
+    max_iteration: int,
+    api_key: str,
+    llm_base_url: str,
+    model: str,
 ) -> None:
     """
     Generate Keploy unit test script for given source file.
@@ -69,7 +72,7 @@ def generate_unit_test_script(
         )
 
     template, placeholder = handler.get_template_and_placeholders(
-        source_file_path, expected_coverage, max_iteration
+        source_file_path, expected_coverage, max_iteration, api_key, llm_base_url, model
     )
 
     create_test_file_if_not_exists(placeholder["TEST_FILE_PATH"])

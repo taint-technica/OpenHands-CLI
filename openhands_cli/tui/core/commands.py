@@ -222,10 +222,29 @@ def generate_unit_test_gen_script(
     lines = []
     lines.append(f"Generating UT script...\n")
 
+    # Get LLM configuration
+    import json
+    from openhands_cli.stores import AgentStore
+    agent_store = AgentStore()
+    config_str = agent_store.load_config_raw()
+    api_key = ""
+    llm_base_url = ""
+    base_model = ""
+    if config_str :
+        config_dict = json.loads(config_str)
+        # lines.append(f"\n\nModel: {config_dict["llm"]["model"]}, Api key: {config_dict["llm"]["api_key"]}\n")        
+        # lines.append(f"LLM url: {config_dict["llm"]["base_url"]}\n")   
+        api_key = config_dict["llm"]["api_key"]
+        llm_base_url = config_dict["llm"]["base_url"]
+        base_model = config_dict["llm"]["model"]
+
     generate_unit_test_script(
         config_table.get("src_file_name") or "",
         config_table.get("coverage_expect") or 85,
         config_table.get("num_iteration") or 5,
+        api_key,
+        llm_base_url,
+        base_model
     )
 
     skills_widget = Static("\n".join(lines), classes="skills-message")

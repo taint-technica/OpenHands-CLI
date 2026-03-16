@@ -275,6 +275,28 @@ class AgentStore:
             )
             return None
 
+    def load_config_raw(self) -> str | None:
+        """Load an agent configuration from disk storage.
+
+        This method only loads the persisted agent configuration. It does not
+        apply runtime configuration or create agents from environment variables.
+
+        Returns:
+            Raw Agent instance from disk, or None if no configuration exists
+            or the file is corrupted.
+        """
+        try:
+            str_spec = self.file_store.read(AGENT_SETTINGS_PATH)
+            Agent.model_validate_json(str_spec)
+            return str_spec
+        except FileNotFoundError:
+            return None
+        except Exception:
+            print_formatted_text(
+                HTML("\n<red>Agent configuration file is corrupted!</red>")
+            )
+            return None
+
     def _ensure_agent(self, agent: Agent | None, overrides: LLMEnvOverrides) -> Agent:
         if agent is not None:
             return agent

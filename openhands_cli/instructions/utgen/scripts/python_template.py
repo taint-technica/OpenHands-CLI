@@ -8,6 +8,8 @@ All content is compiled and protected by Nuitka.
 PYTHON_SCRIPT_TEMPLATE = """\
 #!/bin/bash
 
+export API_KEY="{{API_KEY}}"
+
 ADDITIONAL_PROMPT=""
 [ -f "ARCHITECTURE.md" ] && ADDITIONAL_PROMPT="$(cat ARCHITECTURE.md)"
 
@@ -22,6 +24,8 @@ KEPLOY_ARGS=(
   --testCommand="{{TEST_COMMAND}}"
   --expected-coverage={{EXPECTED_COVERAGE}}
   --maxIterations={{MAX_ITERATIONS}}
+  --llm-base-url={{LLM_BASE_URL}}
+  --model={{MODEL}}
 )
 [ -n "$ADDITIONAL_PROMPT" ] && KEPLOY_ARGS+=(--additional-prompt="$ADDITIONAL_PROMPT")
 

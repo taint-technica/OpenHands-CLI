@@ -26,7 +26,7 @@ def derive_test_path(source_file_path: str) -> str:
     """
     parts = Path(source_file_path).parts
     if len(parts) == 1:
-        test_filename = f"tests_{parts[0]}"
+        test_filename = f"test_{parts[0]}"
         return str(Path("tests", test_filename))
 
     test_filename = f"test_{parts[-1]}"

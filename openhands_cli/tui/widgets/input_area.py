@@ -28,7 +28,7 @@ from textual import on
 from textual.containers import Container
 from textual.reactive import var
 
-from openhands_cli.tui.core.commands import show_help, show_skills
+from openhands_cli.tui.core.commands import show_help, show_skills, show_scanner_config_progress, show_generate_single_unit_test_progress
 from openhands_cli.tui.messages import SlashCommandSubmitted
 
 
@@ -97,6 +97,17 @@ class InputAreaContainer(Container):
             case "analysis_architect_and_framework":
                 # Send to agent for processing (not handled by TUI)
                 self._command_send_to_agent(event.command)
+            case "code_analysis":
+                # Send to agent for processing (not handled by TUI)
+                self._command_send_to_agent(event.command)
+            case "generate_single_unit_test":
+                self._command_generate_single_unit_test()
+            case "configure_sonar_scanner":
+                self._command_configure_sonar_scanner()
+            case "run_unit_test":
+                self._command_run_unit_test()
+            case "post_sonarqube_server":
+                self._command_post_sonarqube_server()
             case _:
                 self.app.notify(
                     title="Unknown Command",
@@ -206,3 +217,37 @@ class InputAreaContainer(Container):
 
         # Send the full command as a message to the agent
         self.post_message(SendMessage(content=f"/{command}"))
+
+    def _command_generate_single_unit_test(self) -> None:
+        """Generate Unit Test for a single file."""
+        project_type = show_generate_single_unit_test_progress(self.scroll_view)
+        app = cast("OpenHandsApp", self.app)
+        app.action_generate_single_unit_test(project_type)
+
+    def _command_configure_sonar_scanner(self) -> None:
+        """Create sonar scanner configuration file."""
+        project_type = show_scanner_config_progress(self.scroll_view)
+        app = cast("OpenHandsApp", self.app)
+        app.action_open_sonar_scanner_settings(project_type)
+
+    def _command_run_unit_test(self) -> None:
+        """Run Unit Test for SonarQube."""
+        from openhands_cli.utils import get_current_wd, count_files_by_type, get_project_type
+        cpath = get_current_wd()
+        count_file_types = count_files_by_type(cpath)
+        proj_type = get_project_type(count_file_types)
+        
+        app = cast("OpenHandsApp", self.app)
+        app.action_run_unit_test(proj_type)
+        return
+
+    def _command_post_sonarqube_server(self) -> None:
+        """Posting Unit Test result to SonarQube Server."""
+        from openhands_cli.utils import get_current_wd, count_files_by_type, get_project_type
+        cpath = get_current_wd()
+        count_file_types = count_files_by_type(cpath)
+        proj_type = get_project_type(count_file_types)
+        
+        app = cast("OpenHandsApp", self.app)
+        app.action_post_sonarqube_server(proj_type)
+        return

@@ -32,6 +32,7 @@ dependencies = [
   "streamingjson>=0.0.2",
   "python-dotenv>=1.0.0",
   "langfuse==2.50.0",
+  "loguru>=0.7.3",
 ]
 
 scripts = { openhands = "openhands_cli.entrypoint:main", "openhands-acp" = "openhands_cli.acp:main" }

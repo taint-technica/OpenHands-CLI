@@ -41,6 +41,7 @@ from acp.schema import (
 from openhands.sdk import (
     BaseConversation,
     Message,
+    TextContent,
 )
 from openhands_cli import __version__
 from openhands_cli.acp_impl.agent.util import AgentType, get_session_mode_state
@@ -48,11 +49,18 @@ from openhands_cli.acp_impl.confirmation import ConfirmationMode
 from openhands_cli.acp_impl.events.event import EventSubscriber
 from openhands_cli.acp_impl.runner import run_conversation_with_confirmation
 from openhands_cli.acp_impl.slash_commands import (
+    CODE_ANALYSIS_ASK_TARGET_INSTRUCTION,
+    CODE_ANALYSIS_SKILL_CONTENT,
     VALID_CONFIRMATION_MODE,
     apply_confirmation_mode_to_conversation,
+    code_analysis,
     create_help_text,
     get_available_slash_commands,
     get_confirmation_mode_from_conversation,
+    get_help_configure_sonar_scanner,
+    get_help_generate_single_unit_test,
+    get_help_post_sonarqube_server,
+    get_help_run_unit_test,
     get_unknown_command_text,
     handle_analysis_architect_and_framework,
     handle_confirm_argument,
@@ -511,23 +519,67 @@ class BaseOpenHandsACPAgent(ACPAgent, ABC):
                 logger.info(f"Executing slash command: /{command} {argument}")
 
                 # Execute the slash command
-                if command == "help":
-                    response_text = create_help_text()
-                elif command == "confirm":
-                    response_text = await self._cmd_confirm(session_id, argument)
-                elif command == "analysis_architect_and_framework":
-                    response_text = handle_analysis_architect_and_framework(argument)
-                else:
-                    response_text = get_unknown_command_text(command)
+                match command:
+                    case "help":
+                        response_text = create_help_text()
+                    case "confirm":
+                        response_text = await self._cmd_confirm(session_id, argument)
+                    case "analysis_architect_and_framework":
+                        response_text = handle_analysis_architect_and_framework(argument)
+                    case "code_analysis":
+                        response_text = code_analysis(argument)
+                        if response_text is None:
+                            # No target provided - redirect to conversation flow
+                            # so the agent can interactively ask the user.
+                            # First, inject the skill content into conversation
+                            # history so the agent has it when user responds.
+                            skill_context = Message(
+                                role="user",
+                                content=[TextContent(text=(
+                                    "[SKILL CONTEXT - saved for later use when user provides a target]\n\n"
+                                    + CODE_ANALYSIS_SKILL_CONTENT
+                                ))],
+                            )
+                            conversation.send_message(skill_context)
+                            # Then send the instruction to ask the user
+                            ask_message = Message(
+                                role="user",
+                                content=[TextContent(text=CODE_ANALYSIS_ASK_TARGET_INSTRUCTION)],
+                            )
+                            conversation.send_message(ask_message)
+                            run_task = asyncio.create_task(
+                                run_conversation_with_confirmation(
+                                    conversation=conversation,
+                                    conn=self._conn,
+                                    session_id=session_id,
+                                )
+                            )
+                            self._running_tasks[session_id] = run_task
+                            try:
+                                await run_task
+                            finally:
+                                self._running_tasks.pop(session_id, None)
+                            return PromptResponse(stop_reason="end_turn")
+                    case "configure_sonar_scanner":
+                        response_text = get_help_configure_sonar_scanner()
+                    case "run_unit_test":
+                        response_text = get_help_run_unit_test()
+                    case "post_sonarqube_server":
+                        response_text = get_help_post_sonarqube_server()
+                    case "generate_single_unit_test":
+                        response_text = get_help_generate_single_unit_test()
+                    case _:
+                        response_text = get_unknown_command_text(command)
 
                 # Send response to client
-                await self._conn.session_update(
-                    session_id=session_id,
-                    update=AgentMessageChunk(
-                        session_update="agent_message_chunk",
-                        content=TextContentBlock(type="text", text=response_text),
-                    ),
-                )
+                if response_text is not None:
+                    await self._conn.session_update(
+                        session_id=session_id,
+                        update=AgentMessageChunk(
+                            session_update="agent_message_chunk",
+                            content=TextContentBlock(type="text", text=response_text),
+                        ),
+                    )
 
                 return PromptResponse(stop_reason="end_turn")
 

@@ -11,4 +11,7 @@ class LanguageHandler(Protocol):
         api_key: str,
         llm_base_url: str,
         model: str,
+        trace_source: str,
+        trace_flow: str,
+        project_name: str,
     ) -> Tuple[str, Dict[str, str]]: ...

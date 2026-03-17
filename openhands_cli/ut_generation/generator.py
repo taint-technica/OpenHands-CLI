@@ -1,12 +1,17 @@
+import logging
 from pathlib import Path
 from typing import Dict
-
-from loguru import logger
 
 from openhands_cli.ut_generation import java_handler, python_handler
 from openhands_cli.ut_generation.config import OUTPUT_SCRIPT_NAME
 from openhands_cli.ut_generation.protocols import LanguageHandler
-from openhands_cli.ut_generation.utils import *
+from openhands_cli.ut_generation.utils import (
+    create_test_file_if_not_exists,
+    detect_language,
+)
+
+
+logger = logging.getLogger(__name__)
 
 
 HANDLER: Dict[str, LanguageHandler] = {"python": python_handler, "java": java_handler}
@@ -49,6 +54,9 @@ def generate_unit_test_script(
     api_key: str,
     llm_base_url: str,
     model: str,
+    trace_source: str = "keploy",
+    trace_flow: str = "utgen",
+    project_name: str | None = None,
 ) -> None:
     """
     Generate Keploy unit test script for given source file.
@@ -71,8 +79,18 @@ def generate_unit_test_script(
             f"Unsupported programming language or extension for: {source_file_path}"
         )
 
+    resolved_project = project_name or Path.cwd().name or "unknown"
+
     template, placeholder = handler.get_template_and_placeholders(
-        source_file_path, expected_coverage, max_iteration, api_key, llm_base_url, model
+        source_file_path,
+        expected_coverage,
+        max_iteration,
+        api_key,
+        llm_base_url,
+        model,
+        trace_source,
+        trace_flow,
+        resolved_project,
     )
 
     create_test_file_if_not_exists(placeholder["TEST_FILE_PATH"])

@@ -244,8 +244,12 @@ class SettingsScreen(ModalScreen):
                 if hasattr(self.proxy_url_input, "value")
                 else ""
             )
+            selected_model = self.model_select.value
+            has_selected_model = isinstance(selected_model, str) and bool(
+                selected_model.strip()
+            )
             has_model = (
-                self.model_select.value not in (NoSelection, "", None)
+                has_selected_model
                 and self.fetched_models  # Must have fetched models
             )
 
@@ -369,7 +373,7 @@ class SettingsScreen(ModalScreen):
     def _save_settings(self) -> None:
         """Save the current settings."""
         proxy_url = self.proxy_url_input.value
-        model = self.model_select.value
+        selected_model = self.model_select.value
         api_key_input = self.api_key_input.value
 
         # Validate required fields
@@ -377,9 +381,11 @@ class SettingsScreen(ModalScreen):
             self._show_message("Please enter Proxy URL", is_error=True)
             return
 
-        if not model or model in (NoSelection, ""):
+        if not isinstance(selected_model, str) or not selected_model.strip():
             self._show_message("Please select a model", is_error=True)
             return
+
+        model = selected_model.strip()
 
         if not api_key_input:
             self._show_message("Please enter API Key", is_error=True)

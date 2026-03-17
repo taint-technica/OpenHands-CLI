@@ -10,6 +10,12 @@ JAVA_SCRIPT_TEMPLATE = """\
 
 export API_KEY="{{API_KEY}}"
 
+# Trace taxonomy for downstream observability (OpenHands + Keploy split)
+export OPENHANDS_TRACE_SOURCE="{{TRACE_SOURCE}}"
+export OPENHANDS_TRACE_FLOW="{{TRACE_FLOW}}"
+export OPENHANDS_PROJECT_NAME="{{PROJECT_NAME}}"
+export OPENHANDS_TRACE_INVOKER="openhands"
+
 ADDITIONAL_PROMPT=""
 [ -f "ARCHITECTURE.md" ] && ADDITIONAL_PROMPT="$(cat ARCHITECTURE.md)"
 

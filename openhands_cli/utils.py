@@ -117,15 +117,21 @@ def get_llm_metadata(
     llm_type: str,
     session_id: str | None = None,
     user_id: str | None = None,
+    source: str = "openhands",
+    flow: str | None = None,
+    project_name: str | None = None,
 ) -> dict[str, Any]:
     """
     Generate LLM metadata for OpenHands CLI.
 
     Args:
         model_name: Name of the LLM model
-        agent_name: Name of the agent (defaults to "openhands")
+        llm_type: LLM usage type (e.g. "agent", "condenser")
         session_id: Optional session identifier
         user_id: Optional user identifier
+        source: Trace source tag (defaults to "openhands")
+        flow: Optional flow tag (defaults to "chat")
+        project_name: Optional project tag value; defaults to current folder name
 
     Returns:
         Dictionary containing metadata for LLM initialization
@@ -147,6 +153,12 @@ def get_llm_metadata(
     except (ModuleNotFoundError, AttributeError):
         pass
 
+    resolved_project = project_name or os.environ.get("OPENHANDS_PROJECT_NAME")
+    if not resolved_project:
+        resolved_project = Path.cwd().name or "unknown"
+
+    resolved_flow = flow or "chat"
+
     metadata = {
         "trace_name": f"openhands-cli/{llm_type}",
         "trace_version": openhands_sdk_version,
@@ -154,6 +166,10 @@ def get_llm_metadata(
             "app:openhands-cli",
             f"model:{model_name}",
             f"type:{llm_type}",
+            f"component:{llm_type}",
+            f"source:{source}",
+            f"flow:{resolved_flow}",
+            f"project:{resolved_project}",
             f"web_host:{os.environ.get('WEB_HOST', 'unspecified')}",
             f"openhands_sdk_version:{openhands_sdk_version}",
             f"openhands_tools_version:{openhands_tools_version}",

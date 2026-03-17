@@ -44,6 +44,34 @@ vim openhands_cli/instructions/dev_skills.py
 
 OpenHands CLI supports two types of skills:
 
+## Langfuse Trace Filtering (OpenHands + Keploy)
+
+This project uses a unified tracing strategy:
+
+- Default Langfuse view shows **all traces combined**.
+- You can then filter by tags for focused analysis.
+
+### Standard tags
+
+- `project:<name>`
+- `source:openhands` or `source:keploy`
+- `flow:chat` or `flow:utgen`
+- `component:agent` or `component:condenser`
+
+### Expected behavior
+
+- OpenHands chat traces are tagged with `source:openhands`.
+- Keploy unit-test generation traces are intended to use `source:keploy`.
+- Filtering by `project:*` still includes both sources unless `source:*` is also applied.
+
+### Practical filters in Langfuse
+
+- All traces for project: `project:OpenHands-CLI`
+- OpenHands only: `project:OpenHands-CLI` + `source:openhands`
+- Keploy only: `project:OpenHands-CLI` + `source:keploy`
+
+This preserves a professional default dashboard (aggregate view first), while enabling source-level drill-down when needed.
+
 ### 1. **Dev Skills (Hardcoded)** 📝
 - Defined in Python code by developers
 - Compiled with Nuitka for protection

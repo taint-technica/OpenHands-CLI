@@ -13,6 +13,8 @@ from textual_autocomplete import DropdownItem
 from openhands_cli.theme import OPENHANDS_THEME
 from openhands_cli.tui.content.resources import LoadedResourcesInfo
 
+UNKNOWN_PROJECT_TEXT = "UNKNOWN Project type\n"
+
 
 # Available commands with descriptions after the command
 COMMANDS = [
@@ -158,17 +160,15 @@ def show_generate_single_unit_test_progress(scroll_view: VerticalScroll) -> int:
     lines.append(f"Current directory: {cpath}\n")
 
     count_file_types = count_files_by_type(cpath)
-    # for file_type, count in sorted(count_file_types.items()):
-    #    lines.append(f"{file_type}: {count}")
 
     proj_type = get_project_type(count_file_types)
     match proj_type:
         case CustomConstants.PROJECT_TYPE_PYTHON:
-            lines.append(f"PYTHON Project\n")
+            lines.append("PYTHON Project\n")
         case CustomConstants.PROJECT_TYPE_JAVA:
-            lines.append(f"JAVA Project\n")
+            lines.append("JAVA Project\n")
         case CustomConstants.PROJECT_TYPE_UNKNOWN:
-            lines.append(f"UNKNOWN Project type\n")
+            lines.append(UNKNOWN_PROJECT_TEXT)
 
     skills_widget = Static("\n".join(lines), classes="skills-message")
     scroll_view.mount(skills_widget)
@@ -194,17 +194,15 @@ def show_scanner_config_progress(scroll_view: VerticalScroll) -> int:
     lines.append(f"Current directory: {cpath}\n")
 
     count_file_types = count_files_by_type(cpath)
-    # for file_type, count in sorted(count_file_types.items()):
-    #    lines.append(f"{file_type}: {count}")
 
     proj_type = get_project_type(count_file_types)
     match proj_type:
         case CustomConstants.PROJECT_TYPE_PYTHON:
-            lines.append(f"PYTHON Project\n")
+            lines.append("PYTHON Project\n")
         case CustomConstants.PROJECT_TYPE_JAVA:
-            lines.append(f"JAVA Project\n")
+            lines.append("JAVA Project\n")
         case CustomConstants.PROJECT_TYPE_UNKNOWN:
-            lines.append(f"UNKNOWN Project type\n")
+            lines.append(UNKNOWN_PROJECT_TEXT)
 
     skills_widget = Static("\n".join(lines), classes="skills-message")
     scroll_view.mount(skills_widget)
@@ -214,13 +212,15 @@ def show_scanner_config_progress(scroll_view: VerticalScroll) -> int:
 def generate_unit_test_gen_script(
     scroll_view: VerticalScroll, config_table: dict
 ) -> bool:
+    from pathlib import Path
+
     from openhands_cli.ut_generation import generate_unit_test_script
 
     if not validate_unit_test_gen_input(scroll_view, config_table):
         return False
 
     lines = []
-    lines.append(f"Generating UT script...\n")
+    lines.append("Generating UT script...\n")
 
     # Get LLM configuration
     import json
@@ -230,13 +230,16 @@ def generate_unit_test_gen_script(
     api_key = ""
     llm_base_url = ""
     base_model = ""
-    if config_str :
+    if config_str:
         config_dict = json.loads(config_str)
-        # lines.append(f"\n\nModel: {config_dict["llm"]["model"]}, Api key: {config_dict["llm"]["api_key"]}\n")        
-        # lines.append(f"LLM url: {config_dict["llm"]["base_url"]}\n")   
         api_key = config_dict["llm"]["api_key"]
         llm_base_url = config_dict["llm"]["base_url"]
         base_model = config_dict["llm"]["model"]
+
+    trace_project = Path.cwd().name or "unknown"
+    lines.append(
+        f"Trace taxonomy: source=keploy, flow=utgen, project={trace_project}\n"
+    )
 
     generate_unit_test_script(
         config_table.get("src_file_name") or "",
@@ -244,7 +247,10 @@ def generate_unit_test_gen_script(
         config_table.get("num_iteration") or 5,
         api_key,
         llm_base_url,
-        base_model
+        base_model,
+        trace_source="keploy",
+        trace_flow="utgen",
+        project_name=trace_project,
     )
 
     skills_widget = Static("\n".join(lines), classes="skills-message")
@@ -349,7 +355,7 @@ def generate_py_scanner_config(scroll_view: VerticalScroll, config_table: dict) 
                 fd.write("sonar.language=java\n")
                 fd.write("sonar.sourceEncoding=UTF-8\n")
             case CustomConstants.PROJECT_TYPE_UNKNOWN:
-                lines.append(f"UNKNOWN Project type\n")
+                lines.append(UNKNOWN_PROJECT_TEXT)
 
     lines.append(f"File {filepath} created successfully.")
     skills_widget = Static("\n".join(lines), classes="skills-message")
@@ -373,7 +379,7 @@ def run_unit_test_progress(scroll_view: VerticalScroll, proj_type: int) -> bool:
         case CustomConstants.PROJECT_TYPE_PYTHON:
             lines.append("Running for Python project, please wait...\n")
             with open("unit_test_result.log", "w") as fd:
-                result = subprocess.run(
+                subprocess.run(
                     [
                         "uv",
                         "run",
@@ -389,19 +395,17 @@ def run_unit_test_progress(scroll_view: VerticalScroll, proj_type: int) -> bool:
                     stdout=fd,
                     stderr=fd,
                 )
-            lines.append(f"Run completed, check unit_test_result.log for details.\n")
+            lines.append("Run completed, check unit_test_result.log for details.\n")
         case CustomConstants.PROJECT_TYPE_JAVA:
             lines.append("Running for Java project, please wait...\n")
-            # cmd_result = subprocess.run(["mvn", "clean", "verify"], cwd=cpath, capture_output=True, text=True)
-            # lines.append(f"{cmd_result.stdout}\n")
             with open("unit_test_result.log", "w") as fd:
-                result = subprocess.run(
+                subprocess.run(
                     ["mvn", "clean", "verify", "-Pcoverage"],
                     cwd=cpath,
                     stdout=fd,
                     stderr=fd,
                 )
-            lines.append(f"Run completed, check unit_test_result.log for details.\n")
+            lines.append("Run completed, check unit_test_result.log for details.\n")
         case CustomConstants.PROJECT_TYPE_UNKNOWN:
             lines.append("Unknow project type.\n")
             retval = False
@@ -421,26 +425,42 @@ def post_sonarqube_server_progress(app) -> None:
     input_area = app.query_one(InputAreaContainer)
     scroll_view = input_area.scroll_view
 
-    retval = True
-
     app.notify(
         title="Posting result",
         message="Posting Unit Test result and source coverage to SonarQube server. Please wait...\n",
         severity="information",
     )
 
-    # Setup enviroment variable before running
-    os.environ["SONAR_TOKEN"] = "squ_b0b20a727902a63aa8193043027cc05a5143921f"
+    # Setup environment variable before running
+    sonar_token = os.environ.get("SONAR_TOKEN", "").strip()
+    sonar_host = os.environ.get("SONAR_HOST_URL", "http://localhost:9000").strip()
+
+    if not sonar_token:
+        scroll_view.mount(
+            Static(
+                "SONAR_TOKEN is not set. Export SONAR_TOKEN before posting results.\n",
+                classes="skills-message",
+            )
+        )
+        app.notify(
+            title="Missing Sonar token",
+            message="Set SONAR_TOKEN environment variable first.",
+            severity="error",
+        )
+        return
+
+    run_env = dict(os.environ)
+    run_env["SONAR_TOKEN"] = sonar_token
 
     with open("post_sonarqube_server_result.log", "w") as fd:
-        result = subprocess.run(
+        subprocess.run(
             [
                 "sonar-scanner",
-                "-Dsonar.host.url=http://10.1.40.46:9000",
+                f"-Dsonar.host.url={sonar_host}",
                 "-Dsonar.scm.disabled=true",
                 "-Dsonar.filesize.limit=150",
             ],
-            env=os.environ,
+            env=run_env,
             stdout=fd,
             stderr=fd,
         )
@@ -450,5 +470,3 @@ def post_sonarqube_server_progress(app) -> None:
         classes="skills-message",
     )
     scroll_view.mount(after_widget)
-
-    return

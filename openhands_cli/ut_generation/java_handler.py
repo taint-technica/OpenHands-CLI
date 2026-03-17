@@ -138,6 +138,9 @@ def get_template_and_placeholders(
     api_key: str,
     llm_base_url: str,
     model: str,
+    trace_source: str,
+    trace_flow: str,
+    project_name: str,
 ) -> Tuple[str, Dict[str, str]]:
     """
     Generate the bash script template and placeholders for Java projects.
@@ -178,6 +181,9 @@ def get_template_and_placeholders(
         "API_KEY": api_key,
         "LLM_BASE_URL": llm_base_url,
         "MODEL": model,
+        "TRACE_SOURCE": trace_source,
+        "TRACE_FLOW": trace_flow,
+        "PROJECT_NAME": project_name,
     }
 
     logger.info(f"Get template and placeholders for {source_file_path}")

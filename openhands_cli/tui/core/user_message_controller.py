@@ -74,6 +74,13 @@ class UserMessageController:
 
         await self._process_message(runner, content)
 
+    async def handle_static_message(self, content: str) -> None:
+        if self._state.conversation_id is None:
+            return
+
+        runner = self._runners.get_or_create(self._state.conversation_id)
+        runner.visualizer.render_static_message(content)
+
     async def _process_message(self, runner: ConversationRunner, content: str) -> None:
         """Process a message by queuing or starting a new run.
 

@@ -100,6 +100,10 @@ class InputAreaContainer(Container):
             case "code_analysis":
                 # Send to agent for processing (not handled by TUI)
                 self._command_send_to_agent(event.command)
+            case "open_project":
+                self._command_open_project()
+            case "open_unit_tests_modal":
+                self._command_open_unit_tests_modal()
             case "generate_single_unit_test":
                 self._command_generate_single_unit_test()
             case "configure_sonar_scanner":
@@ -251,3 +255,14 @@ class InputAreaContainer(Container):
         app = cast("OpenHandsApp", self.app)
         app.action_post_sonarqube_server(proj_type)
         return
+
+    def _command_open_project(self) -> None:
+        """Handle the /open_project command to open the project tree view."""
+        app = cast("OpenHandsApp", self.app)
+
+        app.query_one("#directory_tree_panel").remove_class("hidden")
+
+    def _command_open_unit_tests_modal(self) -> None:
+        """Handle the /open_unit_tests_modal command to open unit test generation modal."""
+        app = cast("OpenHandsApp", self.app)
+        app.query_one("#ut_dialog").remove_class("hidden")

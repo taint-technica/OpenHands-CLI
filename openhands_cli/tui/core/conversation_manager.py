@@ -39,6 +39,7 @@ from openhands_cli.tui.messages import (
     CriticResultReceived,
     SendMessage,
     SendRefinementMessage,
+    SendStaticMessage,
 )
 
 
@@ -211,6 +212,12 @@ class ConversationManager(Container):
         """
         event.stop()
         await self._message_controller.handle_refinement_message(event.content)
+
+    @on(SendStaticMessage)
+    async def _on_send_static_message(self, event: SendStaticMessage) -> None:
+        """Send the static message without agent processing"""
+        event.stop()
+        await self._message_controller.handle_static_message(event.content)
 
     @on(CriticResultReceived)
     def _on_critic_result_received(self, event: CriticResultReceived) -> None:

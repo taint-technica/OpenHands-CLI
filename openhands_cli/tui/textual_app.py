@@ -45,9 +45,8 @@ from textual import events, getters, on
 from textual.app import App, ComposeResult, SystemCommand
 from textual.containers import Horizontal
 from textual.screen import Screen
-from textual.widgets import Footer, Input, Static, TextArea
+from textual.widgets import Footer, Input, Static, TextArea, DirectoryTree
 from textual_autocomplete import AutoComplete
-
 from openhands.sdk import BaseConversation
 from openhands.sdk.security.confirmation_policy import (
     AlwaysConfirm,
@@ -78,6 +77,8 @@ from openhands_cli.tui.core.runner_factory import RunnerFactory
 from openhands_cli.tui.modals import SettingsScreen
 from openhands_cli.tui.modals.exit_modal import ExitConfirmationModal
 from openhands_cli.tui.panels.code_tree_panel import CodeTreeSidePanel
+from openhands_cli.tui.modals.unit_tests_modal import UnitTestsModal
+from openhands_cli.tui.panels.directory_tree_panel import DirectoryTreePanel
 from openhands_cli.tui.panels.history_side_panel import HistorySidePanel
 from openhands_cli.tui.panels.mcp_side_panel import MCPSidePanel
 from openhands_cli.tui.panels.plan_side_panel import PlanSidePanel
@@ -88,7 +89,7 @@ from openhands_cli.tui.widgets.collapsible import (
     CollapsibleTitle,
 )
 from openhands_cli.tui.widgets.splash import SplashContent
-
+from openhands_cli.utils import get_relative_path
 
 class OpenHandsApp(CollapsibleNavigationMixin, App):
     """A minimal textual app for OpenHands CLI with scrollable main display."""
@@ -161,6 +162,8 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             initial_confirmation_policy=initial_confirmation_policy or AlwaysConfirm(),
             initial_critic_settings=cli_settings.critic,
         )
+
+        self.tree_panel = DirectoryTreePanel(root_path=".", id="directory_tree_panel")
 
         # Store exit confirmation setting
         self.exit_confirmation = exit_confirmation
@@ -255,6 +258,9 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
                 # ConversationContainer composes scroll_view, input_area and children
                 # This enables data_bind() (requires owner as active pump)
                 yield self.conversation_state
+                yield self.tree_panel
+
+            yield UnitTestsModal(id="ut_dialog")
 
         # Footer - shows available key bindings
         yield Footer()
@@ -348,6 +354,12 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         if self.headless_mode:
             self._print_conversation_summary()
             self.exit()
+
+    @on(DirectoryTree.DirectorySelected)
+    @on(DirectoryTree.FileSelected)
+    def on_directory_tree_selected(self, event) -> None:
+        relative_path = get_relative_path(event.path, self.tree_panel.root_path)
+        self.query_one("#unit_test_location", Input).value = str(relative_path)
 
     def _print_conversation_summary(self) -> None:
         """Print conversation summary for headless mode."""
@@ -650,9 +662,12 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         this method checks if there's selected text and copies it to clipboard.
         """
         # Get selected text from the screen
-        selected_text = self.screen.get_selected_text()
-        if not selected_text:
-            return
+        try:
+            selected_text = self.screen.get_selected_text()
+            if not selected_text:
+                return
+        except:
+            return 
 
         # Copy to clipboard and get result
         pyperclip_success = self._copy_to_clipboard(selected_text)

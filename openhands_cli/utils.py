@@ -111,6 +111,16 @@ def should_set_litellm_extra_body(model_name: str, base_url: str | None = None) 
 
     return False
 
+def get_relative_path(path: Path, root: Path) -> Path:
+    """
+    Return the relative path from root to path.
+
+    Strict version: raises ValueError if path is not inside root.
+    """
+    try:
+        return path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return path
 
 def get_llm_metadata(
     model_name: str,

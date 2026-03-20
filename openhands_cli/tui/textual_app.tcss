@@ -122,3 +122,7 @@ Footer {
     color: $foreground;
     margin: 0;
 }
+
+.hidden {
+    display: none;
+}

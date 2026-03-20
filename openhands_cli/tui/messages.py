@@ -75,6 +75,12 @@ class SendRefinementMessage(Message):
         super().__init__()
         self.content = content
 
+class SendStaticMessage(Message):
+    """Request to send a static message"""
+
+    def __init__(self, content: str) -> None:
+        super().__init__()
+        self.content = content
 
 class CriticResultReceived(Message):
     """Notification that a critic result was received.

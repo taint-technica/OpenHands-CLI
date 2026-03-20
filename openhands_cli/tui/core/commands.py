@@ -26,6 +26,7 @@ COMMANDS = [
     DropdownItem(main="/feedback - Send anonymous feedback about CLI"),
     DropdownItem(main="/exit - Exit the application"),
     DropdownItem(main="/code_tree - Toggle project code tree panel"),
+    DropdownItem(main="/open_project - Open project tree view"),    
     DropdownItem(
         main="/analysis_architect_and_framework - Analyze code architecture and framework structure"
     ),
@@ -34,12 +35,15 @@ COMMANDS = [
         main="/generate_single_unit_test - Generate Unit Test for a single file"
     ),
     DropdownItem(
+        main="/open_unit_tests_modal - Open the modal to generate unit tests for a file or directory"
+    ),
+    DropdownItem(
         main="/configure_sonar_scanner - Create a Sonar Scanner configuration file"
     ),
     DropdownItem(main="/run_unit_test - Run Unit Test for Sonar report"),
     DropdownItem(
         main="/post_sonarqube_server - Posting Unit Test result and source coverage to SonarQube server"
-    ),
+    ),    
 ]
 
 
@@ -102,6 +106,8 @@ def show_help(scroll_view: VerticalScroll) -> None:
   [{secondary}]/configure_sonar_scanner[/{secondary}] - Create a Sonar Scanner configuration file
   [{secondary}]/run_unit_test[/{secondary}] - Run Unit Test for Sonar report
   [{secondary}]/post_sonarqube_server[/{secondary}] - Posting Unit Test result and source coverage to SonarQube server
+  [{secondary}]/open_project[/{secondary}] - Open project tree view
+  [{secondary}]/open_unit_tests_modal[/{secondary}] - Open the modal to generate unit tests for a file or directory
 
 [dim]Tips:[/dim]
   • Type / and press Tab to see command suggestions

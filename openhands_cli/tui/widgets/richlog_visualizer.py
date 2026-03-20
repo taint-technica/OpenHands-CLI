@@ -391,6 +391,16 @@ class ConversationVisualizer(ConversationVisualizerBase):
         self._dismiss_pending_feedback_widgets()
         self._render_message_widget(content)
 
+    def render_static_message(self, content: str) -> None:
+        """Render a developer-injected message styled as an agent response to the UI.
+
+        Args:
+            content: The message text to display (supports markdown).
+        """
+        widget = Markdown(content)
+        widget.styles.padding = AGENT_MESSAGE_PADDING
+        self._run_on_main_thread(self._add_widget_to_ui, widget)
+
     def render_refinement_message(self, content: str) -> None:
         """Render a system-generated refinement message to the UI.
 

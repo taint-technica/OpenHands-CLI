@@ -30,7 +30,10 @@ from textual.reactive import var
 
 from openhands_cli.tui.core.commands import show_help, show_skills, show_scanner_config_progress, show_generate_single_unit_test_progress
 from openhands_cli.tui.messages import SlashCommandSubmitted
-
+from openhands_cli.tui.dialogs.generate_single_unit_test_dialog import (
+    GenerateSingleUnitTestDialog,
+)
+from openhands_cli.tui.dialogs.unit_tests_dialog import UnitTestsDialog
 
 if TYPE_CHECKING:
     from openhands_cli.tui.content.resources import LoadedResourcesInfo
@@ -226,7 +229,11 @@ class InputAreaContainer(Container):
         """Generate Unit Test for a single file."""
         project_type = show_generate_single_unit_test_progress(self.scroll_view)
         app = cast("OpenHandsApp", self.app)
-        app.action_generate_single_unit_test(project_type)
+        app = cast("OpenHandsApp", self.app)
+        if not app.query("#generate_single_ut_dialog"):
+            app.conversation_manager.mount(
+                GenerateSingleUnitTestDialog(id="generate_single_ut_dialog")
+            )
 
     def _command_configure_sonar_scanner(self) -> None:
         """Create sonar scanner configuration file."""
@@ -265,4 +272,12 @@ class InputAreaContainer(Container):
     def _command_open_unit_tests_modal(self) -> None:
         """Handle the /open_unit_tests_modal command to open unit test generation modal."""
         app = cast("OpenHandsApp", self.app)
-        app.query_one("#ut_dialog").remove_class("hidden")
+        # Dialogs are mounted dynamically instead of being part of the initial layout.
+        # Unlike core UI components (e.g., directory tree) which are always present and
+        # simply shown/hidden, dialogs are transient and may vary in number and type.
+        # Pre-defining all dialogs in the main layout (even as hidden) would be inefficient
+        # and less scalable as the app grows. Therefore, we only mount the dialog when needed,
+        # and reuse it if it already exists.
+
+        if not app.query("#ut_dialog"):
+            app.conversation_manager.mount(UnitTestsDialog(id="ut_dialog"))

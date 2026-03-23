@@ -72,12 +72,14 @@ from openhands_cli.tui.core import (
     RequestSwitchConfirmation,
     SendMessage,
 )
+from openhands_cli.tui.dialogs.generate_single_unit_test_dialog import (
+    GenerateSingleUnitTestDialog,
+)
 from openhands_cli.tui.core.conversation_manager import SwitchConfirmed
 from openhands_cli.tui.core.runner_factory import RunnerFactory
 from openhands_cli.tui.modals import SettingsScreen
 from openhands_cli.tui.modals.exit_modal import ExitConfirmationModal
 from openhands_cli.tui.panels.code_tree_panel import CodeTreeSidePanel
-from openhands_cli.tui.modals.unit_tests_modal import UnitTestsModal
 from openhands_cli.tui.panels.directory_tree_panel import DirectoryTreePanel
 from openhands_cli.tui.panels.history_side_panel import HistorySidePanel
 from openhands_cli.tui.panels.mcp_side_panel import MCPSidePanel
@@ -260,8 +262,6 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
                 yield self.conversation_state
                 yield self.tree_panel
 
-            yield UnitTestsModal(id="ut_dialog")
-
         # Footer - shows available key bindings
         yield Footer()
 
@@ -359,8 +359,13 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
     @on(DirectoryTree.FileSelected)
     def on_directory_tree_selected(self, event) -> None:
         relative_path = get_relative_path(event.path, self.tree_panel.root_path)
-        self.query_one("#unit_test_location", Input).value = str(relative_path)
+        if self.query("#gen_single_ut_file_name"):
+            self.query_one("#gen_single_ut_file_name", Input).value = str(relative_path)
 
+    @on(GenerateSingleUnitTestDialog.GenerateSingleUnitTestEvent)
+    def on_generate_single_unit_test(self, event) -> None:
+        config = event.config
+        self.handle_generate_single_unit_test_config(result=config)
     def _print_conversation_summary(self) -> None:
         """Print conversation summary for headless mode."""
         from rich.console import Console
@@ -465,7 +470,26 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             scroll_view.mount(Static("Cancelled"))
 
         return 
-    
+
+    def handle_generate_single_unit_test_config(self, result: dict | None) -> None:
+        from openhands_cli.tui.core.commands import generate_unit_test_gen_script
+        from openhands_cli.tui.widgets.input_area import InputAreaContainer
+
+        input_area = self.query_one(InputAreaContainer)
+        scroll_view = input_area.scroll_view
+        if result:
+            self.notify(
+                f"Saving for project {result['src_file_name']}, \
+                        expectation coverage: {result['coverage_expect']}, num iteration: {result['num_iteration']}"
+            )
+            scroll_view.mount(Static(f"Saved: {result}"))
+            generate_unit_test_gen_script(scroll_view, result)
+        else:
+            self.notify("Cancelled — no changes made")
+            scroll_view.mount(Static("Cancelled"))
+
+        return
+
     def handle_sonar_scanner_settings_result(self, result: dict | None) -> None:
         from openhands_cli.tui.widgets.input_area import InputAreaContainer
         from openhands_cli.tui.core.commands import generate_py_scanner_config

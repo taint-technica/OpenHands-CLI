@@ -11,7 +11,9 @@ from openhands.sdk.llm import Message, TextContent
 from openhands_cli.acp_impl.utils import convert_acp_mcp_servers_to_agent_format
 from openhands_cli.utils import (
     create_seeded_instructions_from_args,
+    derive_trace_user_id,
     get_default_cli_tools,
+    get_llm_metadata,
     json_callback,
     should_set_litellm_extra_body,
 )
@@ -68,6 +70,47 @@ def test_should_not_set_litellm_extra_body_for_other_base_urls():
     )
     assert not should_set_litellm_extra_body("model", "https://all-hands.dev/")
     assert not should_set_litellm_extra_body("model", None)
+
+
+def test_derive_trace_user_id_from_explicit_env(monkeypatch):
+    monkeypatch.setenv("OPENHANDS_TRACE_USER_ID", "user_alice")
+    monkeypatch.delenv("OPENHANDS_TRACE_USER_MAP", raising=False)
+
+    assert derive_trace_user_id("sk-anything") == "user_alice"
+
+
+def test_derive_trace_user_id_from_key_map(monkeypatch):
+    key = "sk-test-key-123"
+    monkeypatch.delenv("OPENHANDS_TRACE_USER_ID", raising=False)
+    monkeypatch.setenv(
+        "OPENHANDS_TRACE_USER_MAP",
+        json.dumps({key: "user_bob"}),
+    )
+
+    assert derive_trace_user_id(key) == "user_bob"
+
+
+def test_derive_trace_user_id_from_key_fingerprint(monkeypatch):
+    monkeypatch.delenv("OPENHANDS_TRACE_USER_ID", raising=False)
+    monkeypatch.delenv("OPENHANDS_TRACE_USER_MAP", raising=False)
+
+    user_id = derive_trace_user_id("sk-test-key-123")
+    assert user_id is not None
+    assert user_id.startswith("user_")
+    assert len(user_id) == len("user_") + 12
+
+
+def test_get_llm_metadata_keeps_user_separate_from_tags():
+    metadata = get_llm_metadata(
+        model_name="gpt-4",
+        llm_type="agent",
+        session_id="s1",
+        user_id="user_alice",
+        project_name="demo",
+    )
+    assert metadata["trace_user_id"] == "user_alice"
+    assert metadata["user_id"] == "user_alice"
+    assert metadata["tags"] == ["demo"]
 
 
 def test_convert_acp_mcp_servers_empty_list():

@@ -378,6 +378,7 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
     def action_generate_single_unit_test(self, project_type: int) -> None:
         """Action to open the sonar scanner settings screen."""
         from openhands_cli.tui.modals import GenUnitTestFileSettings
+
         # Check if conversation is running via ConversationContainer
         if self.conversation_state.running:
             self.notify(
@@ -387,14 +388,17 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
                 timeout=5.0,
             )
             return
-        
+
         gen_utfile_screen = GenUnitTestFileSettings(project_type)
-        self.push_screen(gen_utfile_screen, self.handle_generate_single_unit_test_result)
+        self.push_screen(
+            gen_utfile_screen, self.handle_generate_single_unit_test_result
+        )
         return
 
     def action_open_sonar_scanner_settings(self, project_type: int) -> None:
         """Action to open the sonar scanner settings screen."""
         from openhands_cli.tui.modals import SonarScannerSettings
+
         # Check if conversation is running via ConversationContainer
         if self.conversation_state.running:
             self.notify(
@@ -411,30 +415,35 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         return
 
     def handle_generate_single_unit_test_result(self, result: dict | None) -> None:
-        from openhands_cli.tui.widgets.input_area import InputAreaContainer
         from openhands_cli.tui.core.commands import generate_unit_test_gen_script
+        from openhands_cli.tui.widgets.input_area import InputAreaContainer
+
         input_area = self.query_one(InputAreaContainer)
-        scroll_view = input_area.scroll_view        
+        scroll_view = input_area.scroll_view
         if result:
-            self.notify(f"Saving for project {result["project_type"]}: {result["src_file_name"]}, \
-                        expectation coverage: {result["coverage_expect"]}, num iteration: {result["num_iteration"]}")
+            self.notify(
+                f"Saving for project {result['project_type']}: {result['src_file_name']}, \
+                        expectation coverage: {result['coverage_expect']}, num iteration: {result['num_iteration']}"
+            )
             scroll_view.mount(Static(f"Saved: {result}"))
             generate_unit_test_gen_script(scroll_view, result)
         else:
             self.notify("Cancelled — no changes made")
             scroll_view.mount(Static("Cancelled"))
 
-        return 
-    
+        return
+
     def handle_sonar_scanner_settings_result(self, result: dict | None) -> None:
-        from openhands_cli.tui.widgets.input_area import InputAreaContainer
         from openhands_cli.tui.core.commands import generate_py_scanner_config
+        from openhands_cli.tui.widgets.input_area import InputAreaContainer
 
         input_area = self.query_one(InputAreaContainer)
-        scroll_view = input_area.scroll_view        
+        scroll_view = input_area.scroll_view
         if result:
-            self.notify(f"Saving for project {result["project_type"]}: {result["project_name"]}, \
-                        inclusive path: {result["inclusive_path"]}, exclusive path: {result["exclusive_path"]}")
+            self.notify(
+                f"Saving for project {result['project_type']}: {result['project_name']}, \
+                        inclusive path: {result['inclusive_path']}, exclusive path: {result['exclusive_path']}"
+            )
             scroll_view.mount(Static(f"Saved: {result}"))
             generate_py_scanner_config(scroll_view, result)
         else:
@@ -442,8 +451,8 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             scroll_view.mount(Static("Cancelled"))
 
     def action_run_unit_test(self, project_type: int) -> None:
-        from openhands_cli.tui.widgets.input_area import InputAreaContainer
         from openhands_cli.tui.core.commands import run_unit_test_progress
+        from openhands_cli.tui.widgets.input_area import InputAreaContainer
 
         if self.conversation_state.running:
             self.notify(
@@ -455,11 +464,11 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             return
 
         input_area = self.query_one(InputAreaContainer)
-        scroll_view = input_area.scroll_view        
+        scroll_view = input_area.scroll_view
         run_unit_test_progress(scroll_view, project_type)
         return
 
-    def action_post_sonarqube_server(self, project_type: int) -> None:        
+    def action_post_sonarqube_server(self, _project_type: int) -> None:
         from openhands_cli.tui.core.commands import post_sonarqube_server_progress
 
         if self.conversation_state.running:
@@ -616,8 +625,14 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         When the user finishes selecting text by releasing the mouse button,
         this method checks if there's selected text and copies it to clipboard.
         """
-        # Get selected text from the screen
-        selected_text = self.screen.get_selected_text()
+        # Get selected text from the screen.
+        # Textual may transiently keep stale/incomplete selections (e.g. end=None),
+        # which can raise IndexError in get_selected_text().
+        try:
+            selected_text = self.screen.get_selected_text()
+        except IndexError:
+            return
+
         if not selected_text:
             return
 
@@ -625,13 +640,7 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         pyperclip_success = self._copy_to_clipboard(selected_text)
 
         # Show appropriate notification based on copy result
-        if pyperclip_success:
-            self.notify(
-                "Selection copied to clipboard",
-                title="Auto-copy",
-                timeout=2,
-            )
-        elif self._is_linux():
+        if not pyperclip_success and self._is_linux():
             # On Linux without pyperclip working, OSC 52 may or may not work
             self.notify(
                 "Selection copied. May require `sudo apt install xclip`",

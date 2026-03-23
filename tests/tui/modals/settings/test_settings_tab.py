@@ -27,15 +27,18 @@ class TestSettingsTab:
             assert tab.query_one("#form_content") is not None
 
             # Key widgets by ID + type
-            tab.query_one("#mode_select", Select)
-            tab.query_one("#provider_select", Select)
             tab.query_one("#model_select", Select)
-
-            tab.query_one("#custom_model_input", Input)
-            tab.query_one("#base_url_input", Input)
+            tab.query_one("#proxy_url_input", Input)
             tab.query_one("#api_key_input", Input)
 
             tab.query_one("#memory_condensation_select", Select)
+            tab.query_one("#timeout_input", Input)
+            tab.query_one("#max_tokens_input", Input)
+            tab.query_one("#max_size_input", Input)
+            # Ensure fetch_models_button exists as a widget; type assertion is
+            # intentionally loose here because it can be rendered as Button
+            # depending on Textual version/layout.
+            tab.query_one("#fetch_models_button")
 
     @pytest.mark.asyncio
     async def test_initial_state_defaults_and_disabled_flags(self):
@@ -45,31 +48,30 @@ class TestSettingsTab:
         async with app.run_test():
             tab = app.query_one(SettingsTab)
 
-            mode = tab.query_one("#mode_select", Select)
-            provider = tab.query_one("#provider_select", Select)
             model = tab.query_one("#model_select", Select)
+            proxy_url = tab.query_one("#proxy_url_input", Input)
 
-            custom_model = tab.query_one("#custom_model_input", Input)
-            base_url = tab.query_one("#base_url_input", Input)
             api_key = tab.query_one("#api_key_input", Input)
             memory = tab.query_one("#memory_condensation_select", Select)
+            timeout_input = tab.query_one("#timeout_input", Input)
+            max_tokens_input = tab.query_one("#max_tokens_input", Input)
+            max_size_input = tab.query_one("#max_size_input", Input)
 
-            assert mode.value == "basic"
-
-            # Provider explicitly enabled; model disabled until provider chosen
-            assert provider.disabled is False
+            # Proxy URL has a default value, but model selection is disabled
+            # until models are fetched.
+            assert proxy_url.value.startswith("http://") or proxy_url.value.startswith("https://")
             assert model.disabled is True
 
-            # Advanced inputs disabled by default
-            assert custom_model.disabled is True
-            assert base_url.disabled is True
-
-            # API key disabled until later steps
+            # API key masked + disabled until models are fetched/fill flow
             assert api_key.disabled is True
 
             # Memory condensation defaults on + disabled until later steps
             assert memory.value is True
             assert memory.disabled is True
+
+            assert timeout_input.disabled is True
+            assert max_tokens_input.disabled is True
+            assert max_size_input.disabled is True
 
     @pytest.mark.asyncio
     async def test_model_select_has_provider_first_placeholder(self):
@@ -83,7 +85,7 @@ class TestSettingsTab:
             # Avoid deep testing options; just assert the placeholder is present.
             # Select stores options internally; _options is the most direct way.
             options = list(model._options)  # noqa: SLF001 (private access)
-            assert ("Select provider first", "") in options
+            assert ("Fetch models first", "") in options
 
     @pytest.mark.asyncio
     async def test_api_key_input_is_masked(self):
@@ -103,14 +105,9 @@ class TestSettingsTab:
         async with app.run_test():
             tab = app.query_one(SettingsTab)
 
-            custom_model = tab.query_one("#custom_model_input", Input)
-            base_url = tab.query_one("#base_url_input", Input)
+            proxy_url = tab.query_one("#proxy_url_input", Input)
             api_key = tab.query_one("#api_key_input", Input)
-
-            assert "gpt-4o-mini" in (custom_model.placeholder or "")
-            assert "claude-3-sonnet" in (custom_model.placeholder or "")
-            assert "https://api.openai.com/v1" in (base_url.placeholder or "")
-            assert "https://api.anthropic.com" in (base_url.placeholder or "")
+            assert "localhost:4000" in (proxy_url.placeholder or "")
             assert "Enter your API key" in (api_key.placeholder or "")
 
     @pytest.mark.asyncio

@@ -6,6 +6,7 @@ import re
 from typing import Any
 
 from prompt_toolkit import HTML, print_formatted_text
+from pydantic import SecretStr
 
 from openhands.sdk import (
     LLM,
@@ -29,6 +30,7 @@ from openhands_cli.locations import (
 from openhands_cli.mcp.mcp_utils import list_enabled_servers
 from openhands_cli.stores.cli_settings import CliSettings
 from openhands_cli.utils import (
+    derive_trace_user_id,
     get_default_cli_tools,
     get_llm_metadata,
     get_os_description,
@@ -173,6 +175,7 @@ class AgentStore:
         self,
         session_id: str | None = None,
         *,
+        env_overrides_enabled: bool = False,
         critic_disabled: bool = False,
     ) -> Agent | None:
         """Load an Agent and apply runtime configuration.
@@ -190,7 +193,6 @@ class AgentStore:
         """
 
         agent = self.load_from_disk()
-
         if agent is None:
             return None
 
@@ -205,11 +207,69 @@ class AgentStore:
         tools = get_persisted_conversation_tools(session_id) if session_id else None
         return tools or get_default_cli_tools()
 
+    def _normalize_proxy_llm(self, llm: LLM) -> LLM:
+        """Normalize model/base_url for LiteLLM proxy compatibility.
+
+        For LiteLLM proxy deployments exposed on port 4000, Claude aliases can be
+        mis-routed to Anthropic provider and return 404. Normalize to OpenAI-style
+        routing and ensure /v1 base path.
+        """
+        if not llm.base_url:
+            return llm
+
+        base_url = llm.base_url.rstrip("/")
+        model = llm.model
+
+        # Detect common LiteLLM proxy URLs (local or remote host on port 4000).
+        is_litellm_proxy = bool(re.match(r"^https?://[^/]+:4000(?:/.*)?$", base_url))
+        if not is_litellm_proxy:
+            return llm
+
+        updated_model = model
+        # Normalize Anthropic-prefixed model to alias first.
+        if model.startswith("anthropic/"):
+            updated_model = model.split("/", 1)[1]
+
+        # Force OpenAI-compatible provider routing for Claude aliases on proxy.
+        if updated_model.startswith("claude-") and not updated_model.startswith(
+            "openai/"
+        ):
+            updated_model = f"openai/{updated_model}"
+
+        updated_base_url = base_url
+        if not re.search(r"/v1$", updated_base_url):
+            updated_base_url = f"{updated_base_url}/v1"
+
+        if updated_model == model and updated_base_url == llm.base_url:
+            return llm
+
+        return llm.model_copy(
+            update={
+                "model": updated_model,
+                "base_url": updated_base_url,
+            }
+        )
+
     def _with_llm_metadata(
         self, llm: LLM, *, session_id: str | None, llm_type: str
     ) -> LLM:
         if not should_set_litellm_extra_body(llm.model, llm.base_url):
             return llm
+
+        api_key = llm.api_key
+        if isinstance(api_key, SecretStr):
+            api_key = api_key.get_secret_value()
+
+        trace_user_id = derive_trace_user_id(api_key, llm.base_url)
+
+        # Keep process-level derived value in sync with the active API key so
+        # user segmentation remains correct when switching keys in one process.
+        # Use a dedicated env var to avoid overriding manual OPENHANDS_TRACE_USER_ID.
+        if trace_user_id:
+            os.environ["OPENHANDS_TRACE_USER_ID_DERIVED"] = trace_user_id
+        else:
+            os.environ.pop("OPENHANDS_TRACE_USER_ID_DERIVED", None)
+
         return llm.model_copy(
             update={
                 "litellm_extra_body": {
@@ -217,6 +277,7 @@ class AgentStore:
                         model_name=llm.model,
                         llm_type=llm_type,
                         session_id=session_id,
+                        user_id=trace_user_id,
                     )
                 }
             }
@@ -254,8 +315,10 @@ class AgentStore:
         ):
             return None
 
+        normalized_condenser_llm = self._normalize_proxy_llm(agent.condenser.llm)
+
         condenser_llm = self._with_llm_metadata(
-            agent.condenser.llm, session_id=session_id, llm_type="condenser"
+            normalized_condenser_llm, session_id=session_id, llm_type="condenser"
         )
 
         return agent.condenser.model_copy(update={"llm": condenser_llm})
@@ -268,8 +331,9 @@ class AgentStore:
         critic_disabled: bool = False,
     ) -> Agent:
         updated_tools = self._resolve_tools(session_id)
+        normalized_llm = self._normalize_proxy_llm(agent.llm)
         updated_llm = self._with_llm_metadata(
-            agent.llm, session_id=session_id, llm_type="agent"
+            normalized_llm, session_id=session_id, llm_type="agent"
         )
 
         agent_context = self._build_agent_context()

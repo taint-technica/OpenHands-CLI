@@ -5,4 +5,3 @@ class CustomConstants:
     SHELL_TYPE_PS = 20
     SHELL_TYPE_CMD = 21
     SHELL_TYPE_OTHER = 22
-

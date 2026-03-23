@@ -175,7 +175,45 @@ class ConversationRunner:
                 self._request_confirmation()
 
         except ConversationRunError as e:
-            self._notification_callback("Conversation Error", str(e), "error")
+            error_message = str(e)
+            if "x-api-key header is required" in error_message:
+                error_message = (
+                    f"{error_message}\n\n"
+                    "Hint: your LiteLLM proxy process is missing provider credentials. "
+                    "Start LiteLLM from a shell where ANTHROPIC_API_KEY is exported "
+                    "(for example by sourcing .env first)."
+                )
+            elif (
+                "AnthropicException" in error_message
+                and '"detail":"Not Found"' in error_message
+            ):
+                llm_base_url = getattr(
+                    getattr(self.conversation, "agent", None), "llm", None
+                )
+                llm_model = getattr(llm_base_url, "model", None)
+                llm_base_url = getattr(llm_base_url, "base_url", None)
+
+                base_url_hint = (
+                    f"Current base URL: {llm_base_url}\n"
+                    if llm_base_url
+                    else "Current base URL: <not set>\n"
+                )
+                model_hint = (
+                    f"Current model: {llm_model}\n"
+                    if llm_model
+                    else "Current model: <not set>\n"
+                )
+
+                error_message = (
+                    f"{error_message}\n\n"
+                    "Hint: this usually means the LLM endpoint/model routing is incorrect.\n"
+                    f"{base_url_hint}"
+                    f"{model_hint}"
+                    "- If using a LiteLLM proxy, verify the proxy URL is correct and the selected model exists in the proxy model list.\n"
+                    "- For LiteLLM proxy + Claude, prefer alias model name without prefix (e.g. claude-sonnet-4-20250514 instead of anthropic/claude-sonnet-4-20250514).\n"
+                    "- If using Anthropic directly, clear custom Base URL and use an Anthropic model (for example anthropic/claude-sonnet-4-20250514)."
+                )
+            self._notification_callback("Conversation Error", error_message, "error")
         except Exception as e:
             self._notification_callback(
                 "Unexpected Error", f"{type(e).__name__}: {e}", "error"

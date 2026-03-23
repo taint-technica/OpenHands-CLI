@@ -13,6 +13,7 @@ from textual_autocomplete import DropdownItem
 from openhands_cli.theme import OPENHANDS_THEME
 from openhands_cli.tui.content.resources import LoadedResourcesInfo
 
+
 UNKNOWN_PROJECT_TEXT = "UNKNOWN Project type\n"
 
 
@@ -212,6 +213,7 @@ def show_scanner_config_progress(scroll_view: VerticalScroll) -> int:
 def generate_unit_test_gen_script(
     scroll_view: VerticalScroll, config_table: dict
 ) -> bool:
+    import os
     from pathlib import Path
 
     from openhands_cli.ut_generation import generate_unit_test_script
@@ -224,7 +226,9 @@ def generate_unit_test_gen_script(
 
     # Get LLM configuration
     import json
+
     from openhands_cli.stores import AgentStore
+
     agent_store = AgentStore()
     config_str = agent_store.load_config_raw()
     api_key = ""
@@ -236,22 +240,32 @@ def generate_unit_test_gen_script(
         llm_base_url = config_dict["llm"]["base_url"]
         base_model = config_dict["llm"]["model"]
 
+    keploy_model_alias = os.environ.get("KEPLOY_LLM_MODEL_ALIAS", "").strip()
+    effective_keploy_model = keploy_model_alias or base_model
+
     trace_project = Path.cwd().name or "unknown"
     lines.append(
         f"Trace taxonomy: source=keploy, flow=utgen, project={trace_project}\n"
     )
+    lines.append(f"Keploy model: {effective_keploy_model}\n")
 
-    generate_unit_test_script(
-        config_table.get("src_file_name") or "",
-        config_table.get("coverage_expect") or 85,
-        config_table.get("num_iteration") or 5,
-        api_key,
-        llm_base_url,
-        base_model,
-        trace_source="keploy",
-        trace_flow="utgen",
-        project_name=trace_project,
-    )
+    try:
+        generate_unit_test_script(
+            config_table.get("src_file_name") or "",
+            config_table.get("coverage_expect") or 85,
+            config_table.get("num_iteration") or 5,
+            api_key,
+            llm_base_url,
+            effective_keploy_model,
+            trace_source="keploy",
+            trace_flow="utgen",
+            project_name=trace_project,
+        )
+    except ValueError as e:
+        lines.append(f"Failed to generate script: {e}\n")
+        skills_widget = Static("\n".join(lines), classes="skills-message")
+        scroll_view.mount(skills_widget)
+        return False
 
     skills_widget = Static("\n".join(lines), classes="skills-message")
     scroll_view.mount(skills_widget)
@@ -262,6 +276,7 @@ def validate_unit_test_gen_input(
     scroll_view: VerticalScroll, config_table: dict
 ) -> bool:
     import os
+    from pathlib import Path
 
     src_file = config_table.get("src_file_name")
     if not src_file or not os.path.isfile(src_file):
@@ -271,8 +286,23 @@ def validate_unit_test_gen_input(
         scroll_view.mount(skills_widget)
         return False
 
+    allowed_suffixes = {".py", ".java"}
+    suffix = Path(src_file).suffix.lower()
+    if suffix not in allowed_suffixes:
+        skills_widget = Static(
+            f'Unsupported source file "{src_file}" (extension: "{suffix or "(none)"}"). '
+            "Only .py or .java are supported. Exiting.\n",
+            classes="skills-message",
+        )
+        scroll_view.mount(skills_widget)
+        return False
+
     coverage_expect = config_table.get("coverage_expect")
-    if not coverage_expect or int(coverage_expect) not in range(1, 100):
+    try:
+        coverage_int = int(str(coverage_expect))
+    except (TypeError, ValueError):
+        coverage_int = -1
+    if coverage_int not in range(1, 100):
         skills_widget = Static(
             f'Coverage "{coverage_expect}" is invalid ! Exiting.\n',
             classes="skills-message",
@@ -281,7 +311,11 @@ def validate_unit_test_gen_input(
         return False
 
     num_iteration = config_table.get("num_iteration")
-    if not num_iteration or int(num_iteration) < 1:
+    try:
+        num_iteration_int = int(str(num_iteration))
+    except (TypeError, ValueError):
+        num_iteration_int = -1
+    if num_iteration_int < 1:
         skills_widget = Static(
             f'Number of iteration "{num_iteration}" is invalid ! Exiting.\n',
             classes="skills-message",

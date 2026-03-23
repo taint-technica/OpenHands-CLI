@@ -1,11 +1,12 @@
+import logging
 from pathlib import Path
-from typing import Dict, Tuple
-
-from loguru import logger
 
 from openhands_cli.instructions.utgen.scripts.python_template import (
     PYTHON_SCRIPT_TEMPLATE,
 )
+
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["get_template_and_placeholders"]
 
@@ -46,8 +47,8 @@ def build_test_command(source_file_path: str, test_file_path: str) -> str:
         Cobertura XML report.
     """
     return (
-        f"uv run coverage run --include={source_file_path} "
-        f"-m pytest {test_file_path} -o addopts= && uv run coverage xml"
+        f"python -m coverage run --include={source_file_path} "
+        f"-m pytest {test_file_path} -o addopts= && python -m coverage xml"
     )
 
 
@@ -61,7 +62,7 @@ def get_template_and_placeholders(
     trace_source: str,
     trace_flow: str,
     project_name: str,
-) -> Tuple[str, Dict[str, str]]:
+) -> tuple[str, dict[str, str]]:
     """
     Generate the bash script template and placeholders for Python projects.
 
@@ -92,7 +93,7 @@ def get_template_and_placeholders(
         "MODEL": model,
         "TRACE_SOURCE": trace_source,
         "TRACE_FLOW": trace_flow,
-        "PROJECT_NAME": project_name,
+        "PROJECT": project_name,
     }
 
     logger.info(f"Get template and placeholders for {source_file_path}")

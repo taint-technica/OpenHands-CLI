@@ -33,11 +33,11 @@
     }
 
     .terminal-r1 { fill: #c5c8c6 }
-.terminal-r2 { fill: #fee165 }
+.terminal-r2 { fill: #dedede }
 .terminal-r3 { fill: #ffffff }
 .terminal-r4 { fill: #222222 }
 .terminal-r5 { fill: #7a7a7a }
-.terminal-r6 { fill: #277dff;font-weight: bold }
+.terminal-r6 { fill: #747474;font-weight: bold }
 .terminal-r7 { fill: #4e4e4e }
     </style>
 

@@ -77,18 +77,20 @@ async def _fill_settings_form(pilot: "Pilot") -> None:
     # First return to settings
     await _cancel_exit_return_to_settings(pilot)
 
-    # Select provider (openai)
-    await pilot.click("#provider_select")
-    await wait_for_app_ready(pilot)
-    await type_text(pilot, "openai")  # Type to search
-    await pilot.press("enter")
-    await wait_for_app_ready(pilot)
-
-    # Select model (gpt-4o-mini)
-    await pilot.click("#model_select")
-    await wait_for_app_ready(pilot)
-    await type_text(pilot, "gpt-4o-mini")
-    await pilot.press("enter")
+    # UI hiện tại dùng cơ chế fetch models từ LiteLLM proxy.
+    # Trong e2e tests không có LiteLLM proxy thật chạy ở localhost:4000,
+    # nên để tránh phụ thuộc mạng/LLM, mình set model options trực tiếp.
+    settings_screen = pilot.app.screen
+    try:
+        settings_screen.fetched_models = ["openai/gpt-4o-mini"]
+        settings_screen.model_select.set_options(
+            [(m, m) for m in settings_screen.fetched_models]
+        )
+        settings_screen.model_select.value = settings_screen.fetched_models[0]
+        settings_screen._update_field_dependencies()
+    except Exception:
+        # Nếu API nội bộ thay đổi, test snapshot sẽ fail và ta cập nhật tiếp.
+        pass
     await wait_for_app_ready(pilot)
 
     # Scroll down to see the API key field (it's in a modal screen)

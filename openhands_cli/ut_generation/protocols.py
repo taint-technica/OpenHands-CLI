@@ -1,8 +1,7 @@
-from typing import Dict, Protocol, Tuple
+from typing import Protocol
 
 
 class LanguageHandler(Protocol):
-
     def get_template_and_placeholders(
         self,
         source_file_path: str,
@@ -14,4 +13,4 @@ class LanguageHandler(Protocol):
         trace_source: str,
         trace_flow: str,
         project_name: str,
-    ) -> Tuple[str, Dict[str, str]]: ...
+    ) -> tuple[str, dict[str, str]]: ...

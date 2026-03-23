@@ -525,7 +525,9 @@ class BaseOpenHandsACPAgent(ACPAgent, ABC):
                     case "confirm":
                         response_text = await self._cmd_confirm(session_id, argument)
                     case "analysis_architect_and_framework":
-                        response_text = handle_analysis_architect_and_framework(argument)
+                        response_text = handle_analysis_architect_and_framework(
+                            argument
+                        )
                     case "code_analysis":
                         response_text = code_analysis(argument)
                         if response_text is None:
@@ -535,16 +537,25 @@ class BaseOpenHandsACPAgent(ACPAgent, ABC):
                             # history so the agent has it when user responds.
                             skill_context = Message(
                                 role="user",
-                                content=[TextContent(text=(
-                                    "[SKILL CONTEXT - saved for later use when user provides a target]\n\n"
-                                    + CODE_ANALYSIS_SKILL_CONTENT
-                                ))],
+                                content=[
+                                    TextContent(
+                                        text=(
+                                            "[SKILL CONTEXT - saved for later use when user "
+                                            "provides a target]\n\n"
+                                            + CODE_ANALYSIS_SKILL_CONTENT
+                                        )
+                                    )
+                                ],
                             )
                             conversation.send_message(skill_context)
                             # Then send the instruction to ask the user
                             ask_message = Message(
                                 role="user",
-                                content=[TextContent(text=CODE_ANALYSIS_ASK_TARGET_INSTRUCTION)],
+                                content=[
+                                    TextContent(
+                                        text=CODE_ANALYSIS_ASK_TARGET_INSTRUCTION
+                                    )
+                                ],
                             )
                             conversation.send_message(ask_message)
                             run_task = asyncio.create_task(

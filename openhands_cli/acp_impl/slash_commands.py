@@ -12,7 +12,6 @@ from openhands.sdk.security.confirmation_policy import (
 )
 from openhands.sdk.security.llm_analyzer import LLMSecurityAnalyzer
 from openhands_cli.acp_impl.confirmation import CONFIRMATION_MODES, ConfirmationMode
-from openhands_cli.instructions.dev_skills import ANALYSIS_ARCHITECT_AND_FRAMEWORK
 from openhands_cli.locations import get_work_dir
 from openhands_cli.shared.slash_commands import (
     parse_slash_command as parse_slash_command,
@@ -87,7 +86,9 @@ def get_available_slash_commands() -> list[AvailableCommand]:
         ),
         AvailableCommand(
             name="post_sonarqube_server",
-            description="Posting Unit Test result and source coverage to SonarQube server",
+            description=(
+                "Posting Unit Test result and source coverage to SonarQube server"
+            ),
             input=AvailableCommandInput(
                 root=UnstructuredCommandInput(hint="No arguments"),
             ),
@@ -334,13 +335,14 @@ List each problem with:
 CODE_ANALYSIS_ASK_TARGET_INSTRUCTION = (
     "IMPORTANT: Do NOT analyze any code yet. Do NOT explore or read the project.\n\n"
     "The user activated the /code_analysis command but didn't specify a target.\n\n"
-    "Your ONLY task right now is to ask the user which specific file, folder, or module "
-    "they want to analyze for unit test friendliness.\n\n"
+    "Your ONLY task right now is to ask the user which specific file, folder, or "
+    "module they want to analyze for unit test friendliness.\n\n"
     "Provide these examples:\n"
     "  - A specific file: src/services/auth.py\n"
     "  - A folder: src/services/\n"
     "  - A module or class name: AuthService\n\n"
-    "Wait for the user's response. Do NOT proceed until they provide a target or say they want to cancel."
+    "Wait for the user's response. Do NOT proceed until they provide a target or "
+    "say they want to cancel."
 )
 
 
@@ -378,7 +380,7 @@ def handle_analysis_architect_and_framework(
     skill_content = """
 You are a Senior Architect with 15+ years of experience
 
-Your task is to analyze the entire project source code, to provide the output to architect.md :
+Your task is to analyze the entire project source code, to provide the output to architect.md:
 
 ## 1. Architecture Overview
 
@@ -425,21 +427,24 @@ def get_unknown_command_text(command: str) -> str:
 def get_help_configure_sonar_scanner() -> str:
     return (
         "Create a Sonar Scanner configuration file\n\n"
-        "This tool helps generating sonar-project.properties file for the current project.\n\n"
+        "This tool helps generating sonar-project.properties file for the current "
+        "project.\n\n"
     )
 
 
 def get_help_run_unit_test() -> str:
     return (
         "Run Unit Test for Sonar report\n\n"
-        "This tool helps running unit test for entire project with coverage reports.\n\n"
+        "This tool helps running unit test for entire project with coverage "
+        "reports.\n\n"
     )
 
 
 def get_help_post_sonarqube_server() -> str:
     return (
         "Posting Unit Test result and source coverage to SonarQube server\n\n"
-        "This tool helps posting unit test result and source coverage to a remote SonarQube server.\n\n"
+        "This tool helps posting unit test result and source coverage to a remote "
+        "SonarQube server.\n\n"
     )
 
 

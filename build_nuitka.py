@@ -194,7 +194,8 @@ def build_with_nuitka() -> bool:
 
     # Build command with explicit data file includes
     # Note: --include-package-data=litellm includes ALL data files from litellm package
-    # This is necessary for litellm's JSON config files (endpoints.json, model_prices, etc.)
+    # This is necessary for litellm's JSON config files (endpoints.json, model_prices,
+    # etc.)
     cmd = [
         sys.executable,
         "-m",
@@ -218,7 +219,8 @@ def build_with_nuitka() -> bool:
         "--include-package-data=pydantic_core",
         "--include-package=litellm",
         "--include-package-data=litellm",
-        # Explicitly include litellm data directories to ensure all JSON files are included
+        # Explicitly include litellm data directories to ensure all JSON files are
+        # included
         f"--include-data-dir={litellm_path}/containers=litellm/containers",
         f"--include-data-dir={litellm_path}/llms=litellm/llms",
         f"--include-data-dir={litellm_path}/integrations=litellm/integrations",

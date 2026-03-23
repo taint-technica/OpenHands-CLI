@@ -28,7 +28,12 @@ from textual import on
 from textual.containers import Container
 from textual.reactive import var
 
-from openhands_cli.tui.core.commands import show_help, show_skills, show_scanner_config_progress, show_generate_single_unit_test_progress
+from openhands_cli.tui.core.commands import (
+    show_generate_single_unit_test_progress,
+    show_help,
+    show_scanner_config_progress,
+    show_skills,
+)
 from openhands_cli.tui.messages import SlashCommandSubmitted
 
 
@@ -232,22 +237,32 @@ class InputAreaContainer(Container):
 
     def _command_run_unit_test(self) -> None:
         """Run Unit Test for SonarQube."""
-        from openhands_cli.utils import get_current_wd, count_files_by_type, get_project_type
+        from openhands_cli.utils import (
+            count_files_by_type,
+            get_current_wd,
+            get_project_type,
+        )
+
         cpath = get_current_wd()
         count_file_types = count_files_by_type(cpath)
         proj_type = get_project_type(count_file_types)
-        
+
         app = cast("OpenHandsApp", self.app)
         app.action_run_unit_test(proj_type)
         return
 
     def _command_post_sonarqube_server(self) -> None:
         """Posting Unit Test result to SonarQube Server."""
-        from openhands_cli.utils import get_current_wd, count_files_by_type, get_project_type
+        from openhands_cli.utils import (
+            count_files_by_type,
+            get_current_wd,
+            get_project_type,
+        )
+
         cpath = get_current_wd()
         count_file_types = count_files_by_type(cpath)
         proj_type = get_project_type(count_file_types)
-        
+
         app = cast("OpenHandsApp", self.app)
         app.action_post_sonarqube_server(proj_type)
         return

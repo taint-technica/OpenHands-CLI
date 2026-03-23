@@ -20,7 +20,6 @@ from textual.widgets import (
     TabbedContent,
     TabPane,
 )
-from textual.widgets._select import NoSelection
 
 from openhands.sdk import LLMSummarizingCondenser
 from openhands_cli.stores import AgentStore, CliSettings, CriticSettings
@@ -249,8 +248,7 @@ class SettingsScreen(ModalScreen):
                 selected_model.strip()
             )
             has_model = (
-                has_selected_model
-                and self.fetched_models  # Must have fetched models
+                has_selected_model and self.fetched_models  # Must have fetched models
             )
 
             # Fetch button enabled if proxy URL is set
@@ -301,11 +299,18 @@ class SettingsScreen(ModalScreen):
         elif event.button.id == "fetch_models_button":
             await self._on_fetch_models_button_pressed(event)
 
-    async def _on_fetch_models_button_pressed(self, event: Button.Pressed) -> None:
+    async def _on_fetch_models_button_pressed(self, _event: Button.Pressed) -> None:
         """Handle fetch models button press."""
         proxy_url = self.proxy_url_input.value
         if not proxy_url:
             self._show_message("Please enter Proxy URL first", is_error=True)
+            return
+
+        api_key_input = self.api_key_input.value.strip()
+        if not api_key_input:
+            self._show_message(
+                "Please enter API Key before fetching models", is_error=True
+            )
             return
 
         self._show_message("Fetching models...", is_error=False)
@@ -322,9 +327,7 @@ class SettingsScreen(ModalScreen):
                 return
 
             # Fetch models
-            self.fetched_models = await fetch_available_models(
-                proxy_url, self.api_key_input.value or None
-            )
+            self.fetched_models = await fetch_available_models(proxy_url, api_key_input)
 
             if not self.fetched_models:
                 self._show_message(

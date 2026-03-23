@@ -1,6 +1,5 @@
 import logging
 from pathlib import Path
-from typing import Dict
 
 from openhands_cli.ut_generation import java_handler, python_handler
 from openhands_cli.ut_generation.config import OUTPUT_SCRIPT_NAME
@@ -14,7 +13,7 @@ from openhands_cli.ut_generation.utils import (
 logger = logging.getLogger(__name__)
 
 
-HANDLER: Dict[str, LanguageHandler] = {"python": python_handler, "java": java_handler}
+HANDLER: dict[str, LanguageHandler] = {"python": python_handler, "java": java_handler}
 
 
 def render_script(template: str, placeholders: dict[str, str]) -> str:

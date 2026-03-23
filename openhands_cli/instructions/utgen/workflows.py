@@ -133,7 +133,7 @@ From user input, extract: source file path, expected coverage, max iterations, m
 - Make executable: `chmod +x Gen_UnitTest.sh`
 
 ### Step 7: Build Keploy Command by Fill Template Placeholders
-- Replace every `{{PLACEHOLDER}}` in the template with actual values:                                                                                       
+- Replace every `{{PLACEHOLDER}}` in the template with actual values:
 -- Project-appropriate paths and test command
 -- Correct coverage format (cobertura for Python, jacoco for Java)
 -- For Java: fill `{{JAVA_HOME}}`, `{{BUILD_CLEAN_COMMAND}}`, `{{COVERAGE_REPORT_PATH}}` per project build tool

@@ -70,7 +70,29 @@ This project uses a unified tracing strategy:
 - OpenHands only: `project:OpenHands-CLI` + `source:openhands`
 - Keploy only: `project:OpenHands-CLI` + `source:keploy`
 
+> Note: `source:keploy` will only appear in Langfuse tag suggestions **after** at least one Keploy generation run has produced traces.
+
 This preserves a professional default dashboard (aggregate view first), while enabling source-level drill-down when needed.
+
+### Recommended production setup for clear Keploy/OpenHands split
+
+If you need a strict split on Langfuse UI today, configure LiteLLM with two aliases that point to the same upstream model:
+
+- `openhands_claude` (used by OpenHands settings model)
+- `keploy_claude` (used by Keploy generation flow)
+
+Then use:
+
+- OpenHands model in settings: `openhands_claude`
+- Environment variable before running OpenHands:
+    - `export KEPLOY_LLM_MODEL_ALIAS=keploy_claude`
+
+With this setup, Langfuse filtering is straightforward:
+
+- OpenHands traces: `model:openhands_claude`
+- Keploy traces: `model:keploy_claude`
+
+This keeps the default combined view intact while enabling a reliable split by source intent without changing Langfuse code.
 
 ### 1. **Dev Skills (Hardcoded)** 📝
 - Defined in Python code by developers

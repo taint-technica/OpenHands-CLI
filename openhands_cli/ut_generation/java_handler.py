@@ -1,14 +1,17 @@
+import logging
 import os
 from pathlib import Path
-from typing import Dict, Tuple
-
-from loguru import logger
 
 from openhands_cli.instructions.utgen.scripts.java_template import JAVA_SCRIPT_TEMPLATE
 from openhands_cli.ut_generation.config import DEFAULT_JAVA_HOME
 
 
 __all__ = ["get_template_and_placeholders"]
+
+logger = logging.getLogger(__name__)
+
+MAIN_JAVA_DIR = "src/main/java/"
+TEST_JAVA_DIR = "src/test/java/"
 
 
 def derive_test_path(source_file_path: str) -> str:
@@ -24,12 +27,18 @@ def derive_test_path(source_file_path: str) -> str:
     Returns:
         Path to the corresponding test file in src/test/java/.
     """
-    path_str = source_file_path.replace("src/main/java/", "src/test/java/")
-    path_str = path_str.replace(".java", "Test.java")
-    return path_str
+    source_path = Path(source_file_path)
+
+    normalized = source_file_path.replace("\\", "/")
+    if MAIN_JAVA_DIR in normalized:
+        path_str = normalized.replace(MAIN_JAVA_DIR, TEST_JAVA_DIR)
+        return path_str.replace(".java", "Test.java")
+
+    # Fallback for non-standard Java layouts (single file or custom dirs)
+    return str(source_path.with_name(f"{source_path.stem}Test.java"))
 
 
-def detect_build_tool() -> str:
+def detect_build_tool(source_file_path: str) -> tuple[str, Path]:
     """
     Detect Java build tool by checking for build configuration files.
 
@@ -37,19 +46,32 @@ def detect_build_tool() -> str:
     1. pom.xml → Maven
     2. build.gradle or build.gradle.kts → Gradle
 
+    Args:
+        source_file_path: Path to the Java source file. Build files are searched
+            from this path upward to the filesystem root.
+
     Returns:
-        Build tool identifier: 'maven' or 'gradle'.
+        Tuple of (build tool identifier, project root path).
 
     Raises:
         ValueError: If neither pom.xml nor build.gradle files are found.
     """
-    if Path("pom.xml").exists():
-        return "maven"
+    current = Path(source_file_path).resolve().parent
 
-    if Path("build.gradle").exists() or Path("build.gradle.kts").exists():
-        return "gradle"
+    for candidate in [current, *current.parents]:
+        if (candidate / "pom.xml").exists():
+            return "maven", candidate
 
-    raise ValueError("Cannot detect Java build tool: no pom.xml or build.gradle found")
+        if (candidate / "build.gradle").exists() or (
+            candidate / "build.gradle.kts"
+        ).exists():
+            return "gradle", candidate
+
+    raise ValueError(
+        "Cannot detect Java build tool for "
+        f"{source_file_path}: no pom.xml/build.gradle found in this directory or parent directories. "
+        "Please run from a Maven/Gradle project root or add a build file first."
+    )
 
 
 def detect_java_home() -> str:
@@ -62,7 +84,7 @@ def detect_java_home() -> str:
     return os.environ.get("JAVA_HOME") or DEFAULT_JAVA_HOME
 
 
-def build_test_command(test_file_path: str, build_tool: str) -> str:
+def build_test_command(test_file_path: str, build_tool: str, project_root: Path) -> str:
     """
     Build test command for Java projects with coverage.
 
@@ -76,13 +98,22 @@ def build_test_command(test_file_path: str, build_tool: str) -> str:
     if build_tool == "maven":
         # Extract simple class name from Java test file path
         classname = Path(test_file_path).stem
-        return f"mvn verify -P coverage -Dtest={classname}"
+        return f'cd "{project_root}" && mvn verify -P coverage -Dtest={classname}'
 
     if build_tool == "gradle":
         # Extract fully qualified class name from Java test file path
-        path = test_file_path.replace("src/test/java/", "").replace(".java", "")
-        fq_classname = path.replace("/", ".")
-        return f'./gradlew test jacocoTestReport --tests "{fq_classname}"'
+        normalized = test_file_path.replace("\\", "/")
+        if TEST_JAVA_DIR in normalized:
+            path = normalized.replace(TEST_JAVA_DIR, "").replace(".java", "")
+            fq_classname = path.replace("/", ".")
+        else:
+            fq_classname = Path(test_file_path).stem
+
+        gradle_cmd = "./gradlew" if (project_root / "gradlew").exists() else "gradle"
+        return (
+            f'cd "{project_root}" && '
+            f'{gradle_cmd} test jacocoTestReport --tests "{fq_classname}"'
+        )
 
     msg = f"Error: Not support for build tool {build_tool}"
     logger.error(msg)
@@ -141,7 +172,7 @@ def get_template_and_placeholders(
     trace_source: str,
     trace_flow: str,
     project_name: str,
-) -> Tuple[str, Dict[str, str]]:
+) -> tuple[str, dict[str, str]]:
     """
     Generate the bash script template and placeholders for Java projects.
 
@@ -164,8 +195,8 @@ def get_template_and_placeholders(
             project root (propagated from build tool detection).
     """
     test_file_path = derive_test_path(source_file_path)
-    build_tool = detect_build_tool()
-    test_command = build_test_command(test_file_path, build_tool)
+    build_tool, project_root = detect_build_tool(source_file_path)
+    test_command = build_test_command(test_file_path, build_tool, project_root)
 
     coverage_report_path = get_coverage_report_path(build_tool)
 
@@ -183,7 +214,7 @@ def get_template_and_placeholders(
         "MODEL": model,
         "TRACE_SOURCE": trace_source,
         "TRACE_FLOW": trace_flow,
-        "PROJECT_NAME": project_name,
+        "PROJECT": project_name,
     }
 
     logger.info(f"Get template and placeholders for {source_file_path}")

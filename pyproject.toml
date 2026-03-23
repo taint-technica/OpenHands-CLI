@@ -32,17 +32,15 @@ dependencies = [
   "streamingjson>=0.0.2",
   "python-dotenv>=1.0.0",
   "langfuse==2.50.0",
+  "apscheduler>=3.10.4",
   "loguru>=0.7.3",
 ]
 
 scripts = { openhands = "openhands_cli.entrypoint:main", "openhands-acp" = "openhands_cli.acp:main" }
 
 [project.optional-dependencies]
-# Enable Langfuse tracing via the official Langfuse Python client.
-# Set LANGFUSE_ENABLED=true + LANGFUSE_PUBLIC_KEY + LANGFUSE_SECRET_KEY to activate.
-langfuse = [
-    "langfuse>=3.14.5",
-]
+# Langfuse tracing is already included as a main dependency (langfuse==2.50.0)
+# for LiteLLM compatibility. No optional extra needed.
 
 [dependency-groups]
 # Hatchling wheel target: include the package directory

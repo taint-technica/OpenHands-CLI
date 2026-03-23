@@ -182,6 +182,17 @@ def save_settings(
 
         full_model = data.get_full_model_name()
 
+        # When users configure a custom proxy URL, provider-prefixed Anthropic
+        # models (e.g. anthropic/claude-*) can be routed as direct Anthropic API
+        # calls against that proxy host, which often returns 404 Not Found.
+        # Normalize to alias form for proxy routing.
+        if (
+            data.base_url
+            and full_model.startswith("anthropic/")
+            and "anthropic.com" not in data.base_url
+        ):
+            full_model = full_model.split("/", 1)[1]
+
         if full_model.startswith("openhands/") and data.base_url is None:
             data.base_url = "https://llm-proxy.app.all-hands.dev/"
 

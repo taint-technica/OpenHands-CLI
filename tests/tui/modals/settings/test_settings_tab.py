@@ -59,7 +59,9 @@ class TestSettingsTab:
 
             # Proxy URL has a default value, but model selection is disabled
             # until models are fetched.
-            assert proxy_url.value.startswith("http://") or proxy_url.value.startswith("https://")
+            assert proxy_url.value.startswith("http://") or proxy_url.value.startswith(
+                "https://"
+            )
             assert model.disabled is True
 
             # API key masked + disabled until models are fetched/fill flow

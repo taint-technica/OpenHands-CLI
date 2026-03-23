@@ -213,6 +213,7 @@ def _lookup_litellm_key_alias(api_key: str, base_url: str) -> str | None:
         return _TRACE_USER_ID_CACHE[cache_key]
 
     admin_url = _normalize_litellm_admin_url(base_url)
+
     def _extract_alias(payload: Any) -> str | None:
         candidates: list[Any] = []
         if isinstance(payload, dict):
@@ -270,7 +271,9 @@ def _lookup_litellm_key_alias(api_key: str, base_url: str) -> str | None:
     return None
 
 
-def derive_trace_user_id(api_key: str | None, base_url: str | None = None) -> str | None:
+def derive_trace_user_id(
+    api_key: str | None, base_url: str | None = None
+) -> str | None:
     """Derive a stable, non-secret user identifier for tracing/filtering.
 
     Resolution order:
@@ -305,12 +308,7 @@ def derive_trace_user_id(api_key: str | None, base_url: str | None = None) -> st
         "false",
         "no",
     }
-    if (
-        use_litellm_alias
-        and api_key
-        and base_url
-        and _is_litellm_proxy_url(base_url)
-    ):
+    if use_litellm_alias and api_key and base_url and _is_litellm_proxy_url(base_url):
         alias = _lookup_litellm_key_alias(api_key=api_key, base_url=base_url)
         if alias:
             return alias

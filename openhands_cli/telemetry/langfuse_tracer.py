@@ -283,9 +283,8 @@ class _LangfuseConversationTracer:
         )
         self._trace_user_id = self._detect_trace_user_id()
         self._default_model_name = self._detect_default_model_name()
-        # Keep tags dedicated to project-only filtering (Langfuse UI expects
-        # `project:<name>` tag format).
-        trace_tags = [f"project:{self._project_name}"]
+        # Keep a single canonical project tag format across OpenHands + Keploy.
+        trace_tags = [self._project_name]
         trace_metadata = {
             "conversation_id": conversation_id,
             "project_path": self._project_path,

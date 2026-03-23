@@ -1,4 +1,5 @@
 import logging
+import re
 from pathlib import Path
 
 from openhands_cli.ut_generation import java_handler, python_handler
@@ -14,6 +15,37 @@ logger = logging.getLogger(__name__)
 
 
 HANDLER: dict[str, LanguageHandler] = {"python": python_handler, "java": java_handler}
+
+
+def _normalize_keploy_llm_target(llm_base_url: str, model: str) -> tuple[str, str]:
+    """Normalize LLM target for Keploy against LiteLLM-style proxies.
+
+    For proxies exposed on port 4000, Keploy should call OpenAI-compatible
+    endpoints under `/v1` and use `openai/` model routing for Claude aliases.
+    """
+    base = (llm_base_url or "").strip()
+    model_name = (model or "").strip()
+
+    if not base or not model_name:
+        return base, model_name
+
+    is_litellm_proxy = bool(
+        re.match(r"^https?://[^/]+:4000(?:/.*)?$", base.rstrip("/"))
+    )
+    if not is_litellm_proxy:
+        return base, model_name
+
+    normalized_base = base.rstrip("/")
+    if not normalized_base.endswith("/v1"):
+        normalized_base = f"{normalized_base}/v1"
+
+    normalized_model = model_name
+    if normalized_model.startswith("anthropic/"):
+        normalized_model = normalized_model.split("/", 1)[1]
+    if normalized_model.startswith("claude-"):
+        normalized_model = f"{normalized_model}"
+
+    return normalized_base, normalized_model
 
 
 def render_script(template: str, placeholders: dict[str, str]) -> str:
@@ -80,13 +112,18 @@ def generate_unit_test_script(
 
     resolved_project = project_name or Path.cwd().name or "unknown"
 
+    normalized_base_url, normalized_model = _normalize_keploy_llm_target(
+        llm_base_url,
+        model,
+    )
+
     template, placeholder = handler.get_template_and_placeholders(
         source_file_path,
         expected_coverage,
         max_iteration,
         api_key,
-        llm_base_url,
-        model,
+        normalized_base_url,
+        normalized_model,
         trace_source,
         trace_flow,
         resolved_project,

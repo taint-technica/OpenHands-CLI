@@ -175,7 +175,6 @@ class AgentStore:
         self,
         session_id: str | None = None,
         *,
-        env_overrides_enabled: bool = False,
         critic_disabled: bool = False,
     ) -> Agent | None:
         """Load an Agent and apply runtime configuration.

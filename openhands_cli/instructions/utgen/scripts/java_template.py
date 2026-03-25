@@ -52,6 +52,28 @@ if enabled and host and pk and sk:
   source = os.getenv("OPENHANDS_TRACE_SOURCE", "keploy")
   flow = os.getenv("OPENHANDS_TRACE_FLOW", "utgen")
   invoker = os.getenv("OPENHANDS_TRACE_INVOKER", "openhands")
+  user_id = (
+    os.getenv("OPENHANDS_TRACE_USER_ID") or
+    os.getenv("OPENHANDS_TRACE_USER_ID_DERIVED") or
+    None
+  )
+
+  trace_body: dict = {
+    "id": trace_id,
+    "name": "keploy",
+    "timestamp": now,
+    "sessionId": f"keploy::{os.getcwd()}",
+    "tags": [project],
+    "metadata": {
+      "project": project,
+      "source": source,
+      "flow": flow,
+      "invoker": invoker,
+      "origin": "keploy-script",
+    },
+  }
+  if user_id:
+    trace_body["userId"] = user_id
 
   payload = {
     "batch": [
@@ -59,20 +81,7 @@ if enabled and host and pk and sk:
         "id": str(uuid.uuid4()),
         "timestamp": now,
         "type": "trace-create",
-        "body": {
-          "id": trace_id,
-          "name": "keploy",
-          "timestamp": now,
-          "sessionId": f"keploy::{os.getcwd()}",
-          "tags": [project],
-          "metadata": {
-            "project": project,
-            "source": source,
-            "flow": flow,
-            "invoker": invoker,
-            "origin": "keploy-script",
-          },
-        },
+        "body": trace_body,
       }
     ]
   }

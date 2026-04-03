@@ -68,7 +68,7 @@ def check_for_updates(timeout: float = 2.0) -> VersionInfo:
             needs_update = False
 
         return VersionInfo(
-            current_version=current,
+            current_version="1.0.0",
             latest_version=latest,
             needs_update=needs_update,
             error=None,

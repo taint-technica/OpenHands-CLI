@@ -22,12 +22,12 @@ class GenerateSingleUnitTestDialog(BaseDialog):
 
     def compose(self) -> ComposeResult:
         yield Title("Generate single unit tests")
-        yield Field(field_title="File name", input_id="gen_single_ut_file_name")
+        yield Field(field_title="File name", input_id="gen_single_ut_file_name", input_class=["normal_input"])
         yield Field(
-            field_title="Coverage Expectation (0-100%)", input_id="gen_single_ut_cov"
+            field_title="Coverage Expectation (0-100%)", input_id="gen_single_ut_cov", input_class=["normal_input"], input_default="80"
         )
-        yield Field(field_title="Num. iterations", input_id="gen_single_ut_iter")
-        with ButtonBar(id="generate_single_unit_test_button_bar"):
+        yield Field(field_title="Num. iterations", input_id="gen_single_ut_iter", input_class=["normal_input"], input_default="3")
+        with ButtonBar(id="generate_single_ut_button_bar"):
             yield Button("Generate unit tests", id="btn_gen_ut")
             yield Button("Close", id="btn_hide")
 
@@ -41,6 +41,7 @@ class GenerateSingleUnitTestDialog(BaseDialog):
             self.notify("Please fill in all fields")
             return
         else:
+            self.remove()
             try:
                 config = {
                     "src_file_name": src,

@@ -75,9 +75,14 @@ from openhands_cli.tui.core import (
 from openhands_cli.tui.dialogs.generate_single_unit_test_dialog import (
     GenerateSingleUnitTestDialog,
 )
+from openhands_cli.tui.dialogs.configure_sonar_scanner_dialog import (
+    ConfigureSonarScannerDialog,
+)
+
 from openhands_cli.tui.core.conversation_manager import SwitchConfirmed
 from openhands_cli.tui.core.runner_factory import RunnerFactory
 from openhands_cli.tui.modals import SettingsScreen
+from openhands_cli.tui.dialogs.core.custom_input import CustomInput
 from openhands_cli.tui.modals.exit_modal import ExitConfirmationModal
 from openhands_cli.tui.panels.code_tree_panel import CodeTreeSidePanel
 from openhands_cli.tui.panels.directory_tree_panel import DirectoryTreePanel
@@ -224,6 +229,9 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         # Set the theme as active
         self.theme = "openhands"
 
+        # Set the latest dialog
+        self._last_focused_input_id: str | None = None
+
     CSS_PATH = "textual_app.tcss"
 
     def compose(self) -> ComposeResult:
@@ -355,17 +363,92 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             self._print_conversation_summary()
             self.exit()
 
+    @on(CustomInput.InputFocused)
+    def on_field_input_focused(self, event: CustomInput.InputFocused) -> None:
+        self._last_focused_input_id = event.focus_input_id
+
     @on(DirectoryTree.DirectorySelected)
     @on(DirectoryTree.FileSelected)
     def on_directory_tree_selected(self, event) -> None:
+        # relative_path = get_relative_path(event.path, self.tree_panel.root_path)
+        # if self.query("#gen_single_ut_file_name"):
+        #     self.query_one("#gen_single_ut_file_name", Input).value = str(relative_path)
+
+        from openhands_cli.tui.dialogs import BaseDialog
+
         relative_path = get_relative_path(event.path, self.tree_panel.root_path)
-        if self.query("#gen_single_ut_file_name"):
-            self.query_one("#gen_single_ut_file_name", Input).value = str(relative_path)
+        dialogs = self.query(BaseDialog)
+
+        if dialogs:
+            dialog = dialogs.first()
+            if self._last_focused_input_id:
+                target = dialog.query_one(f"#{self._last_focused_input_id}", Input)
+                if target.has_class("additive_input"):
+                    if target.value:
+                        target.value += f", {str(relative_path)}"
+                    else:
+                        target.value = str(relative_path)
+                else:
+                    target.value = str(relative_path)
+            else:
+                target = dialog.query_one(Input)
+                target.value = str(relative_path)
 
     @on(GenerateSingleUnitTestDialog.GenerateSingleUnitTestEvent)
     def on_generate_single_unit_test(self, event) -> None:
         config = event.config
         self.handle_generate_single_unit_test_config(result=config)
+
+        if not self.query("#ut_result_dialog_scroll_view"):
+            from openhands_cli.tui.dialogs.ut_result_dialog import UnitTestResultDialog
+
+            self.conversation_manager.mount(
+                UnitTestResultDialog(
+                    content="",
+                    ut_result_dialog_scroll_view_id="ut_result_dialog_scroll_view",
+                )
+            )
+
+        cmd = ["/usr/bin/bash", "./Gen_UnitTest.sh"]
+        self.run_worker(self._execute(cmd), exclusive=True)
+
+    @on(ConfigureSonarScannerDialog.ConfigureSonarScannerEvent)
+    def on_configure_sonar_scanner(self, event) -> None:
+        config = event.config
+        self.handle_sonar_scanner_settings_result(result=config)
+
+    async def _execute(self, cmd: list[str]) -> None:
+        import asyncio
+
+        from openhands_cli.tui.messages import (
+            SendStaticMessage,
+        )
+
+        try:
+            import re
+
+            from openhands_cli.tui.dialogs.core import ScrollView
+
+            _ansi_escape = re.compile(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+
+            if proc.stdout :
+                async for line in proc.stdout:
+                    text = _ansi_escape.sub("", line.decode(errors="replace")).rstrip()
+                    if text:
+                        self.query_one("#ut_result_dialog_scroll_view", ScrollView).update(
+                            text
+                        )      
+            self.query_one("#ut_result_dialog_scroll_view", ScrollView).update("Finished generating test cases")      
+        except Exception as e:
+            self.conversation_manager.post_message(SendStaticMessage(f"Err: {e}"))
+
+
     def _print_conversation_summary(self) -> None:
         """Print conversation summary for headless mode."""
         from rich.console import Console
@@ -497,7 +580,7 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
         input_area = self.query_one(InputAreaContainer)
         scroll_view = input_area.scroll_view        
         if result:
-            self.notify(f"Saving for project {result["project_type"]}: {result["project_name"]}, \
+            self.notify(f"Saving for project {result["project_name"]}, \
                         inclusive path: {result["inclusive_path"]}, exclusive path: {result["exclusive_path"]}")
             scroll_view.mount(Static(f"Saved: {result}"))
             generate_py_scanner_config(scroll_view, result)

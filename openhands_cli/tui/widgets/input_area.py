@@ -30,10 +30,12 @@ from textual.reactive import var
 
 from openhands_cli.tui.core.commands import show_help, show_skills, show_scanner_config_progress, show_generate_single_unit_test_progress
 from openhands_cli.tui.messages import SlashCommandSubmitted
-from openhands_cli.tui.dialogs.generate_single_unit_test_dialog import (
+
+from openhands_cli.tui.dialogs import (
+    ConfigureSonarScannerDialog,
     GenerateSingleUnitTestDialog,
 )
-from openhands_cli.tui.dialogs.unit_tests_dialog import UnitTestsDialog
+
 
 if TYPE_CHECKING:
     from openhands_cli.tui.content.resources import LoadedResourcesInfo
@@ -237,9 +239,11 @@ class InputAreaContainer(Container):
 
     def _command_configure_sonar_scanner(self) -> None:
         """Create sonar scanner configuration file."""
-        project_type = show_scanner_config_progress(self.scroll_view)
         app = cast("OpenHandsApp", self.app)
-        app.action_open_sonar_scanner_settings(project_type)
+        if not app.query("#config_sonar_scanner_dialog"):
+            app.conversation_manager.mount(
+                ConfigureSonarScannerDialog(id="config_sonar_scanner_dialog")
+            )
 
     def _command_run_unit_test(self) -> None:
         """Run Unit Test for SonarQube."""
@@ -279,5 +283,5 @@ class InputAreaContainer(Container):
         # and less scalable as the app grows. Therefore, we only mount the dialog when needed,
         # and reuse it if it already exists.
 
-        if not app.query("#ut_dialog"):
-            app.conversation_manager.mount(UnitTestsDialog(id="ut_dialog"))
+        #if not app.query("#ut_dialog"):
+        #    app.conversation_manager.mount(UnitTestsDialog(id="ut_dialog"))

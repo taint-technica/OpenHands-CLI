@@ -5,7 +5,7 @@ BaseDialog {
     height: 14;
 
     background: $panel;
-    border: round $accent;
+    border: round $primary;
 }
 
 BaseDialog ButtonBar {

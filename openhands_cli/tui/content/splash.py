@@ -20,23 +20,36 @@ def get_conversation_text(conversation_id: str, *, theme: Theme) -> str:
 
 def get_openhands_banner() -> str:
     """Get the OpenHands ASCII art banner."""
-    # ASCII art with consistent line lengths for proper alignment
+
+    banner_lines = r"""
+        [#253b8f]▄[/][#683293]▄▄▄▄▄[/]    [#fcb42d]▄▄▄▄▄▄[/][#ef5c31]▄[/]
+        [#253b8f]█[/]     [#a92062]▀▄[/]        [#ef5c31]█[/]
+        [#253b8f]█[/]       [#a92062]▀▄[/]      [#ef5c31]█[/]
+        [#253b8f]█[/][#0f72b9]▄▄▄▄▄[/]    [#a92062]▀[/][#ed212e]▄▄▄▄▄[/][#ef5c31]█[/]
+            [#35b0e4]▀▄[/]         
+                [#35b0e4]▀▄[/]       
+            [#8bc63f]▄[/]   [#1a8f85]█[/]      
+            [#8bc63f]█[/]   [#1a8f85]█[/]      
+            [#8bc63f]█[/]   [#1a8f85]█[/]      
+            [#8bc63f]█[/]   [#1a8f85]█[/]      
+            [#34b45a]▀▀▀▀▀[/]
+    """
+
     banner_lines = [
-        r"     ___                    _   _                 _     ",
-        r"    /  _ \ _ __   ___ _ __ | | | | __ _ _ __   __| |___",
-        r"    | | | | '_ \ / _ \ '_ \| |_| |/ _` | '_ \ / _` / __|",
-        r"    | |_| | |_) |  __/ | | |  _  | (_| | | | | (_| \__ \ ",
-        r"    \___ /| .__/ \___|_| |_|_| |_|\__,_|_| |_|\__,_|___/",
-        r"          |_|                                           ",
+        r"[#253b8f]▄[/][#683293]▄▄▄▄▄[/]    [#fcb42d]▄▄▄▄▄▄[/][#ef5c31]▄[/]",
+        r"[#253b8f]█[/]     [#a92062]▀▄[/]        [#ef5c31]█[/]",
+        r"[#253b8f]█[/]       [#a92062]▀▄[/]      [#ef5c31]█[/]",
+        r"[#253b8f]█[/][#0f72b9]▄▄▄▄▄[/]    [#a92062]▀[/][#ed212e]▄▄▄▄▄[/][#ef5c31]█[/]",
+        r"      [#35b0e4]▀▄[/]         ",
+        r"        [#35b0e4]▀▄[/]       ",
+        r"      [#8bc63f]▄[/]   [#1a8f85]█[/]      ",
+        r"      [#8bc63f]█[/]   [#1a8f85]█[/]      ",
+        r"      [#8bc63f]█[/]   [#1a8f85]█[/]      ",
+        r"      [#8bc63f]█[/]   [#1a8f85]█[/]      ",
+        r"[#34b45a]▀▀▀▀▀[/]",
     ]
 
-    # Find the maximum line length
-    max_length = max(len(line) for line in banner_lines)
-
-    # Pad all lines to the same length for consistent alignment
-    padded_lines = [line.ljust(max_length) for line in banner_lines]
-
-    return "\n".join(padded_lines)
+    return "\n".join(banner_lines)
 
 
 def get_splash_content(
@@ -66,7 +79,7 @@ def get_splash_content(
     # Create structured content as dictionary
     content = {
         "banner": banner,
-        "version": f"OpenHands CLI v{version_info.current_version}",
+        "version": f"\nTechnica CLI v{version_info.current_version}",
         "status_text": "All set up!",
         "conversation_text": get_conversation_text(conversation_id, theme=theme),
         "conversation_id": conversation_id,

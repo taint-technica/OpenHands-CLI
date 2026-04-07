@@ -10,9 +10,9 @@ class CustomInput(Input):
             self.focus_input_id = focus_input_id
             super().__init__()
 
-    def __init__(self, id: str, classes: str):
+    def __init__(self, id: str, classes: list[str]):
         super().__init__(id=id)
-        self.add_class(classes)
+        self.add_class(*classes)
 
     @on(Focus)
     def handle_focus(self):

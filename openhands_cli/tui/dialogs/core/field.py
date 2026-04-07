@@ -9,11 +9,13 @@ from openhands_cli.tui.dialogs.core.field_style import FIELD_STYLE
 class Field(Vertical):
     DEFAULT_CSS = FIELD_STYLE
 
-    def __init__(self, field_title: str, input_id: str, input_class: list[str], input_default=""):
+    def __init__(
+        self, field_title: str, input_id: str, input_class: list[str], input_default=""
+    ):
         self.field_title = Static(content=field_title)
         self.input_field = CustomInput(
             id=input_id,
-            classes=" ".join(input_class),  # ✅ fix
+            classes=input_class,  # ✅ fix
         )
         self.input_field.value = input_default
         super().__init__()

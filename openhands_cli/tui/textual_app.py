@@ -369,7 +369,9 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
 
     @on(DirectoryTree.DirectorySelected)
     @on(DirectoryTree.FileSelected)
-    def on_directory_tree_selected(self, event) -> None:
+    def on_directory_tree_selected(
+        self, event: DirectoryTree.FileSelected | DirectoryTree.DirectorySelected
+    ) -> None:
         # relative_path = get_relative_path(event.path, self.tree_panel.root_path)
         # if self.query("#gen_single_ut_file_name"):
         #     self.query_one("#gen_single_ut_file_name", Input).value = str(relative_path)
@@ -381,17 +383,28 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
 
         if dialogs:
             dialog = dialogs.first()
-            if self._last_focused_input_id:
-                target = dialog.query_one(f"#{self._last_focused_input_id}", Input)
-                if target.has_class("additive_input"):
-                    if target.value:
-                        target.value += f", {str(relative_path)}"
-                    else:
-                        target.value = str(relative_path)
+
+            if not self._last_focused_input_id:
+                target = dialog.query_one(Input)
+                target.value = str(relative_path)
+                return
+
+            target = dialog.query_one(f"#{self._last_focused_input_id}", Input)
+            if target.has_class("additive_input"):
+                if target.has_class("glob_pattern") and isinstance(
+                    event, DirectoryTree.DirectorySelected
+                ):
+                    from pathlib import Path
+
+                    folder_name = Path(relative_path).name
+                    # Actually, this should be named as glob_path
+                    relative_path = f"**/{folder_name}/**"
+
+                if target.value:
+                    target.value += f", {str(relative_path)}"
                 else:
                     target.value = str(relative_path)
             else:
-                target = dialog.query_one(Input)
                 target.value = str(relative_path)
 
     @on(GenerateSingleUnitTestDialog.GenerateSingleUnitTestEvent)

@@ -304,12 +304,6 @@ def generate_py_scanner_config(scroll_view: VerticalScroll, config_table: dict) 
     lines = []
     lines.append(f"Creating File: {filepath}")
 
-    if os.path.exists(filepath):
-        lines.append(f"File {filepath} already exist ! Exiting...")
-        skills_widget = Static("\n".join(lines), classes="skills-message")
-        scroll_view.mount(skills_widget)
-        return False
-
     with open(filepath, "w") as fd:
         fd.write(f"sonar.projectName={config_table.get('project_name')}\n")
         id_str = str(uuid.uuid4())
@@ -317,12 +311,24 @@ def generate_py_scanner_config(scroll_view: VerticalScroll, config_table: dict) 
         fd.write("sonar.projectVersion=1.0\n\n")
 
         proj_type = config_table.get("project_type")
+
+        exclusive_paths_set = {
+            p.strip()
+            for p in config_table.get("exclusive_path", "").split(",")
+            if p.strip()
+        }
+        defaullt_python_exclusive_paths = set(
+            {"**/__pycache__/**", "**/.pytest_cache/**", "**/.venv/**"}
+        )
+        default_java_exclusive_paths = set(
+            {"**/.idea/**", "**/.mvn/**", "**/target/**"}
+        )
         match proj_type:
             case CustomConstants.PROJECT_TYPE_PYTHON:
                 # Source code location
                 fd.write(f"sonar.sources={config_table.get('inclusive_path')}\n")
                 fd.write(
-                    f"sonar.exclusions=**/__pycache__/**,**/.pytest_cache/**, **/.venv/**, {config_table.get('exclusive_path')}\n"
+                    f"sonar.exclusions={','.join(sorted(defaullt_python_exclusive_paths.union(exclusive_paths_set)))}\n"
                 )
                 fd.write("sonar.coverage.exclusions=**/__init__.py, tests/**/*.py\n\n")
                 # Test file location
@@ -337,8 +343,9 @@ def generate_py_scanner_config(scroll_view: VerticalScroll, config_table: dict) 
             case CustomConstants.PROJECT_TYPE_JAVA:
                 # Source code location
                 fd.write("sonar.sources=src/main/java\n")
+                
                 fd.write(
-                    f"sonar.exclusions=**/.idea/**,**/.mvn/**,**/target/**, {config_table.get('exclusive_path')}\n"
+                    f"sonar.exclusions={','.join(sorted(default_java_exclusive_paths.union(exclusive_paths_set)))}\n"
                 )
                 fd.write("sonar.coverage.exclusions=src/test/**/*.java\n\n")
                 # Test file location
@@ -355,7 +362,7 @@ def generate_py_scanner_config(scroll_view: VerticalScroll, config_table: dict) 
                 fd.write("sonar.language=java\n")
                 fd.write("sonar.sourceEncoding=UTF-8\n")
             case CustomConstants.PROJECT_TYPE_UNKNOWN:
-                lines.append(f"UNKNOWN Project type\n")
+                lines.append("UNKNOWN Project type\n")
 
     lines.append(f"File {filepath} created successfully.")
     skills_widget = Static("\n".join(lines), classes="skills-message")

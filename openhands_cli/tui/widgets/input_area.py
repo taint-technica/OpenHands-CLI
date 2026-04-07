@@ -241,8 +241,56 @@ class InputAreaContainer(Container):
         """Create sonar scanner configuration file."""
         app = cast("OpenHandsApp", self.app)
         if not app.query("#config_sonar_scanner_dialog"):
+            from pathlib import Path
+
+            sonar_properties_path = "sonar-project.properties"
+            file_path = Path(sonar_properties_path)
+            file_path.touch(exist_ok=True)
+            sonar_config_dict = {}
+            TARGET_KEYS = {"projectName", "sources", "exclusions"}
+
+            with file_path.open(encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+
+                    # skip empty lines and comments
+                    if not line or line.startswith("#"):
+                        continue
+
+                    # split only once
+                    if "=" not in line:
+                        continue  # skip invalid lines safely
+
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+                    value = value.strip()
+
+                    # remove "sonar." prefix safely
+                    if key.startswith("sonar."):
+                        key = key.removeprefix("sonar.")
+
+                        if key in TARGET_KEYS:
+                            if key == "projectName":
+                                sonar_config_dict["project_name"] = value
+                            else:
+                                sonar_config_dict[key] = value
+
+            from openhands_cli.utils import (
+                count_files_by_type,
+                get_current_wd,
+                get_project_type,
+            )
+
+            cpath = get_current_wd()
+            count_file_types = count_files_by_type(cpath)
+            project_type = get_project_type(count_file_types)
+            sonar_config_dict["project_type"] = project_type
+
             app.conversation_manager.mount(
-                ConfigureSonarScannerDialog(id="config_sonar_scanner_dialog")
+                ConfigureSonarScannerDialog(
+                    id="config_sonar_scanner_dialog",
+                    sonar_config_dict=sonar_config_dict,
+                )
             )
 
     def _command_run_unit_test(self) -> None:

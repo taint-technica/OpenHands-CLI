@@ -37,6 +37,8 @@ Data Binding:
     updates to all bound UI components via data_bind() and watch().
 """
 
+import asyncio
+import os
 import uuid
 from collections.abc import Iterable
 from typing import ClassVar
@@ -423,43 +425,62 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             )
 
         cmd = ["/usr/bin/bash", "./Gen_UnitTest.sh"]
-        self.run_worker(self._execute(cmd), exclusive=True)
+        self.run_worker(
+            self._run_command_and_stream_output(
+                cmd,
+                scroll_view_id="ut_result_dialog_scroll_view",
+                finish_message="Finished generating test cases"
+            ),
+            exclusive=True,
+        )
+
 
     @on(ConfigureSonarScannerDialog.ConfigureSonarScannerEvent)
     def on_configure_sonar_scanner(self, event) -> None:
         config = event.config
         self.handle_sonar_scanner_settings_result(result=config)
 
-    async def _execute(self, cmd: list[str]) -> None:
-        import asyncio
+    async def _run_command_and_stream_output(
+        self, cmd: list[str], scroll_view_id: str, filename=None, cwd: str | None = None,
+        finish_message: str = "Finished"
+    ) -> None:
+        from openhands_cli.tui.dialogs.core import ScrollView
+        from openhands_cli.utils import clean_output
 
-        from openhands_cli.tui.messages import (
-            SendStaticMessage,
-        )
+        view = self.query_one(f"#{scroll_view_id}", ScrollView)
+
+        file = open(filename, "a") if filename else None
 
         try:
-            import re
+            async for raw in self._run_command(cmd, cwd):
+                text = clean_output(raw)
 
-            from openhands_cli.tui.dialogs.core import ScrollView
+                if text:
+                    view.update(text)
 
-            _ansi_escape = re.compile(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+                if file:
+                    file.write(text)
 
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
+        finally:
+            if file:
+                file.close()
 
-            if proc.stdout :
-                async for line in proc.stdout:
-                    text = _ansi_escape.sub("", line.decode(errors="replace")).rstrip()
-                    if text:
-                        self.query_one("#ut_result_dialog_scroll_view", ScrollView).update(
-                            text
-                        )      
-            self.query_one("#ut_result_dialog_scroll_view", ScrollView).update("Finished generating test cases")      
-        except Exception as e:
-            self.conversation_manager.post_message(SendStaticMessage(f"Err: {e}"))
+        view.update(finish_message)
+
+    async def _run_command(self, cmd: list[str], cwd: str | None = None):
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            cwd=cwd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+
+        assert proc.stdout
+
+        async for line in proc.stdout:
+            yield line
+
+        await proc.wait()
 
 
     def _print_conversation_summary(self) -> None:
@@ -602,8 +623,9 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             scroll_view.mount(Static("Cancelled"))
 
     def action_run_unit_test(self, project_type: int) -> None:
-        from openhands_cli.tui.widgets.input_area import InputAreaContainer
-        from openhands_cli.tui.core.commands import run_unit_test_progress
+        from openhands_cli.tui.dialogs.run_unit_test_result_dialog import (
+            RunUnitTestResultDialog,
+        )
 
         if self.conversation_state.running:
             self.notify(
@@ -614,14 +636,61 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             )
             return
 
-        input_area = self.query_one(InputAreaContainer)
-        scroll_view = input_area.scroll_view        
-        run_unit_test_progress(scroll_view, project_type)
+        if not self.query(
+            "#run_unit_test_result_dialog",
+        ):
+            self.conversation_manager.mount(
+                RunUnitTestResultDialog(
+                    content="",
+                    run_ut_result_dialog_scroll_view_id="run_ut_result_dialog_scroll_view",
+                )
+            )
+
+        from openhands_cli.constants import CustomConstants
+        from openhands_cli.utils import get_current_wd
+
+        lines = []
+
+        cpath = get_current_wd()
+        lines.append(f"Running Unit Test for entire project in {cpath}\n")
+
+        match project_type:
+            case CustomConstants.PROJECT_TYPE_PYTHON:
+                cmd = [
+                    "uv",
+                    "run",
+                    "pytest",
+                    "--verbose",
+                    "--cov=.",
+                    "--cov-report=xml:src-coverage.xml",
+                    "--cov-report=html:htmlcov",
+                    "--cov-report=term",
+                    "--junit-xml=ut-results.xml",
+                ]
+            case CustomConstants.PROJECT_TYPE_JAVA:
+                cmd = [
+                    "mvn",
+                    "clean",
+                    "verify",
+                    "-Pcoverage",
+                ]
+            case _:
+                cmd = ["echo", "There is error in running unit test"]
+
+        self.run_worker(
+            self._run_command_and_stream_output(
+                cmd,
+                scroll_view_id="run_ut_result_dialog_scroll_view",
+                filename="unit_test_result.log",
+                cwd=str(cpath),
+                finish_message="Running unit test is completed!"
+            ),
+            exclusive=True,
+        )
+
         return
 
     def action_post_sonarqube_server(self, project_type: int) -> None:        
-        from openhands_cli.tui.core.commands import post_sonarqube_server_progress
-
         if self.conversation_state.running:
             self.notify(
                 "Posting SonarQube Server are not available while a conversation is running. "
@@ -631,7 +700,39 @@ class OpenHandsApp(CollapsibleNavigationMixin, App):
             )
             return
 
-        post_sonarqube_server_progress(self)
+        # post_sonarqube_server_progress(self)
+
+        from openhands_cli.tui.dialogs.post_sonarqube_server_result_dialog import (
+            PostSonarQubeServerResultDialog,
+        )
+
+        if not self.query(
+            "#run_unit_test_result_dialog",
+        ):
+            self.conversation_manager.mount(
+                PostSonarQubeServerResultDialog(
+                    content="",
+                    post_sonarqube_server_scroll_view_id="post_sonarqube_server_scroll_view_id",
+                )
+            )
+
+        os.environ["SONAR_TOKEN"] = "squ_b0b20a727902a63aa8193043027cc05a5143921f"
+        cmd = [
+            "sonar-scanner",
+            "-Dsonar.host.url=http://10.1.40.46:9000",
+            "-Dsonar.scm.disabled=true",
+            "-Dsonar.filesize.limit=150",
+        ]
+
+        self.run_worker(
+            self._run_command_and_stream_output(
+                cmd,
+                scroll_view_id="post_sonarqube_server_scroll_view_id",
+                filename="post_sonarqube_server_result.log",
+                finish_message="Posting SonarQube is completed!"
+            ),
+            exclusive=True,
+        )
         return
 
     def _notify_restart_required(self) -> None:

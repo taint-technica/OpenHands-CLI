@@ -22,6 +22,11 @@ from openhands.tools.preset.default import get_default_condenser
 from openhands.tools.task_tracker import TaskTrackerTool
 from openhands.tools.terminal import TerminalTool
 
+_ansi_escape = re.compile(r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+def clean_output(raw: bytes) -> str:
+    return _ansi_escape.sub("", raw.decode(errors="replace")).rstrip()
 
 def abbreviate_number(n: int | float) -> str:
     """Abbreviate large numbers with K/M/B suffixes.
